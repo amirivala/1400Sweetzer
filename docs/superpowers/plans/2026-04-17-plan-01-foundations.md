@@ -37,7 +37,8 @@
 │       ├── 00003_create_events.sql
 │       ├── 00004_create_providers.sql
 │       ├── 00005_create_admin_actions.sql
-│       └── 00006_rls_policies.sql
+│       ├── 00006_rls_policies.sql
+│       └── 00007_rls_hardening.sql
 └── docs/superpowers/               ← already exists
 ```
 
@@ -514,6 +515,22 @@ git commit -m "feat(1400): add Row Level Security policies"
 
 ---
 
+## Task 8b: Write migration — RLS hardening (added during code review)
+
+**Files:**
+- Create: `supabase/migrations/00007_rls_hardening.sql`
+
+This migration addresses gaps that came up in the post-Task-8 code review:
+- Residents could self-promote by directly updating their own `role`/`status`
+- Hidden directory rows (`directory_visible=false`) were still readable by other approved residents
+- Admins could write content with someone else's id in `author_id` / `created_by` / `actor_id`
+- Helper RLS functions were callable by anonymous users
+- No CHECK ensured `events.end_at >= events.start_at`
+
+The migration is committed in this batch. Just apply it after `00006` in Task 9.
+
+---
+
 ## Task 9: Apply migrations to Supabase
 
 **Files:** none (this is a remote-side action)
@@ -524,7 +541,7 @@ git commit -m "feat(1400): add Row Level Security policies"
 
 - [ ] **Step 2: Run each migration in order**
 
-  For each file in `supabase/migrations/`, in numerical order (`00001` → `00006`):
+  For each file in `supabase/migrations/`, in numerical order (`00001` → `00007`):
 
   1. Open the file in your editor, copy the entire contents
   2. Paste into the Supabase SQL Editor
