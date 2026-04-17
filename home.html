@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Home · 1400 Sweetzer</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="home">
+    <h1>1400 Sweetzer</h1>
+    <p>Welcome, <span id="userEmail">…</span></p>
+    <button id="signOutBtn" class="btn">Sign out</button>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/auth-guard.js"></script>
+  <script>
+    (async () => {
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (session) {
+        document.getElementById('userEmail').textContent = session.user.email;
+      }
+      document.getElementById('signOutBtn').addEventListener('click', async () => {
+        await window.sb.auth.signOut();
+        location.href = '/';
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in · 1400 Sweetzer</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="auth">
+    <h1>Sign in</h1>
+    <form id="signinForm">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" required autocomplete="email" />
+      <button type="submit" class="btn btn--primary">Send magic link</button>
+    </form>
+    <p id="status" class="status" role="status"></p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script>
+    const form = document.getElementById('signinForm');
+    const status = document.getElementById('status');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      status.textContent = 'Sending…';
+      const email = document.getElementById('email').value.trim();
+      const { error } = await window.sb.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${location.origin}/auth/callback.html` },
+      });
+      status.textContent = error
+        ? `Error: ${error.message}`
+        : 'Check your email for the sign-in link.';
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Signing you in…</title>
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body>
+  <main class="auth">
+    <p id="status" class="status" role="status">Signing you in…</p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script>
+    // supabase-js auto-parses the URL hash and stores the session.
+    // We just need to wait for it, then route based on profile status.
+    (async () => {
+      const status = document.getElementById('status');
+
+      // Give supabase-js a tick to consume the URL hash.
+      await new Promise((r) => setTimeout(r, 50));
+
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) {
+        status.textContent = 'Sign-in failed. Try again.';
+        setTimeout(() => (location.href = '/auth/signin.html'), 1500);
+        return;
+      }
+
+      const { data: profile, error } = await window.sb
+        .from('profiles')
+        .select('status')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error || !profile) {
+        // Edge case: trigger didn't run, or row was deleted.
+        location.href = '/';
+        return;
+      }
+
+      if (profile.status === 'approved') {
+        location.href = '/home.html';
+      } else if (profile.status === 'pending') {
+        // pending.html doesn't exist yet (Plan 2). For now, sign them out.
+        await window.sb.auth.signOut();
+        status.textContent = 'Your account is pending approval.';
+      } else {
+        await window.sb.auth.signOut();
+        status.textContent = 'Your account is no longer active.';
+      }
+    })();
+  </script>
+</body>
+</html>
