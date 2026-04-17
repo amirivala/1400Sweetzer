@@ -1,0 +1,11 @@
+# Local env / secrets (anon key is public, service role key is NOT)
+supabase/.env
+supabase/config.toml
+.env
+
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
