@@ -9,3 +9,6 @@ supabase/config.toml
 # Editors
 .vscode/
 .idea/
+
+# Tooling
+.claude/
