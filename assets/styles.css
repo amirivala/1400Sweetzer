@@ -271,7 +271,10 @@ button { background: none; border: 0; cursor: pointer; }
   font-weight: 400;
   font-size: 1.15rem;
   letter-spacing: -0.01em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  text-shadow:
+    0 1px 1px  rgba(0, 0, 0, 0.45),
+    0 2px 6px  rgba(0, 0, 0, 0.30),
+    0 6px 18px rgba(0, 0, 0, 0.18);
 }
 @media (min-width: 720px) { .top-bar__brand-name { display: inline; } }
 
@@ -351,7 +354,9 @@ button { background: none; border: 0; cursor: pointer; }
   font-size: 0.85rem;
   font-weight: 400;
   color: var(--paper);
-  text-shadow: 0 1px 2px rgba(0,0,0,0.4);
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.30);
 }
 .update-pill__chip {
   position: relative;
@@ -400,20 +405,27 @@ button { background: none; border: 0; cursor: pointer; }
   font-weight: 400;
   font-variation-settings: "opsz" 144, "SOFT" 30;
   color: var(--paper);
-  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
+  /* Apple-style layered drop shadow — three stacked shadows of
+     progressively larger blur build a soft ambient halo that keeps
+     text legible against any patch of the photo without a visible
+     "drop shadow" look. */
+  text-shadow:
+    0 1px 1px  rgba(0, 0, 0, 0.40),
+    0 2px 8px  rgba(0, 0, 0, 0.32),
+    0 10px 36px rgba(0, 0, 0, 0.30);
   margin-inline: auto;
 
   display: inline-flex;
   align-items: baseline;
   flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 0.4em;
+  justify-content: center;
+  gap: 0.35em;
   text-align: left;
-  max-width: 16ch;
+  max-width: 100%;
 }
 
 .hero-display__small {
-  font-size: clamp(1.0rem, 0.55rem + 1.6vw, 1.85rem);
+  font-size: clamp(0.95rem, 0.6rem + 1.1vw, 1.55rem);
   font-weight: 300;
   line-height: 1;
   letter-spacing: -0.005em;
@@ -422,10 +434,17 @@ button { background: none; border: 0; cursor: pointer; }
   white-space: nowrap;
 }
 .hero-display__big {
-  font-size: clamp(2.4rem, 1.0rem + 6.5vw, 7.5rem);
+  font-size: clamp(2.2rem, 1.0rem + 5vw, 6rem);
   font-weight: 400;
   line-height: 0.94;
   letter-spacing: -0.025em;
+  white-space: nowrap;
+}
+
+/* On phones, allow the big line to wrap by removing the nowrap. */
+@media (max-width: 640px) {
+  .hero-display__big { white-space: normal; }
+  .hero-display { justify-content: flex-start; }
 }
 
 /* The supporting paragraph under the headline */
@@ -437,7 +456,10 @@ button { background: none; border: 0; cursor: pointer; }
   color: var(--paper-mute);
   max-width: 56ch;
   margin-inline: auto;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+  text-shadow:
+    0 1px 1px  rgba(0, 0, 0, 0.45),
+    0 2px 6px  rgba(0, 0, 0, 0.32),
+    0 6px 20px rgba(0, 0, 0, 0.20);
   text-wrap: pretty;
 }
 
@@ -492,6 +514,9 @@ button { background: none; border: 0; cursor: pointer; }
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--paper-dim);
+  text-shadow:
+    0 1px 1px rgba(0, 0, 0, 0.50),
+    0 2px 8px rgba(0, 0, 0, 0.30);
 }
 .address-strip__group { display: flex; gap: 1.2rem; align-items: center; }
 .address-strip__dot {
