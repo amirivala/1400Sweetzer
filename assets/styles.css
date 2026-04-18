@@ -243,7 +243,11 @@ button { background: none; border: 0; cursor: pointer; }
   pointer-events: none;
 }
 
-.stage > * { position: relative; z-index: 4; }
+/* Stage chrome (top bar, hero, address strip) sits over the photo.
+   The :not(.stage__media) is critical — without it, the rule below
+   overrides .stage__media's `position: absolute` and pulls the photo
+   into the document grid instead of letting it fill the background. */
+.stage > :not(.stage__media) { position: relative; z-index: 4; }
 
 /* ---------- Floating top bar ------------------------------ */
 .top-bar {
@@ -386,9 +390,10 @@ button { background: none; border: 0; cursor: pointer; }
   max-width: min(60vw, 520px);
 }
 
-/* The big italic display headline.
-   Two-line treatment: a small prelude line ("Welcome") above a much
-   larger main line ("to Sunset Penthouse."). */
+/* The display headline — single inline-flex row with two parts:
+   a small italic "Welcome" tucked to the left of a much larger
+   italic "to Sunset Penthouse.", both sharing the same baseline.
+   Wraps to two lines on phones (still left-aligned).               */
 .hero-display {
   font-family: var(--serif);
   font-style: italic;
@@ -396,28 +401,31 @@ button { background: none; border: 0; cursor: pointer; }
   font-variation-settings: "opsz" 144, "SOFT" 30;
   color: var(--paper);
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
-  text-wrap: balance;
   margin-inline: auto;
-  display: grid;
-  justify-items: center;
-  gap: clamp(0.05rem, 0.5vh, 0.4rem);
+
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 0.4em;
+  text-align: left;
+  max-width: 16ch;
 }
-.hero-display .br { display: block; }
 
 .hero-display__small {
-  font-size: clamp(1.6rem, 0.8rem + 3.5vw, 3.5rem);
+  font-size: clamp(1.0rem, 0.55rem + 1.6vw, 1.85rem);
   font-weight: 300;
   line-height: 1;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.005em;
   color: var(--paper-mute);
   font-variation-settings: "opsz" 60, "SOFT" 50;
+  white-space: nowrap;
 }
 .hero-display__big {
-  font-size: clamp(2.6rem, 1.2rem + 7vw, 8rem);
+  font-size: clamp(2.4rem, 1.0rem + 6.5vw, 7.5rem);
   font-weight: 400;
   line-height: 0.94;
   letter-spacing: -0.025em;
-  max-width: 14ch;
 }
 
 /* The supporting paragraph under the headline */
