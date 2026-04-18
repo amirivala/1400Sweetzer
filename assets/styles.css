@@ -441,10 +441,18 @@ button { background: none; border: 0; cursor: pointer; }
   white-space: nowrap;
 }
 
-/* On phones, allow the big line to wrap by removing the nowrap. */
+/* On phones, allow the big line to wrap and force the small line
+   to its own row so nothing overflows the viewport. */
 @media (max-width: 640px) {
-  .hero-display__big { white-space: normal; }
-  .hero-display { justify-content: flex-start; }
+  .hero-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15em;
+    width: 100%;
+    text-align: left;
+  }
+  .hero-display__small { white-space: normal; }
+  .hero-display__big   { white-space: normal; max-width: 100%; }
 }
 
 /* The supporting paragraph under the headline */
@@ -454,13 +462,14 @@ button { background: none; border: 0; cursor: pointer; }
   font-size: clamp(0.95rem, 0.85rem + 0.4vw, 1.1rem);
   line-height: 1.5;
   color: var(--paper-mute);
-  max-width: 56ch;
+  max-width: min(56ch, 100%);
   margin-inline: auto;
   text-shadow:
     0 1px 1px  rgba(0, 0, 0, 0.45),
     0 2px 6px  rgba(0, 0, 0, 0.32),
     0 6px 20px rgba(0, 0, 0, 0.20);
   text-wrap: pretty;
+  overflow-wrap: break-word;
 }
 
 .hero-cta-row {
@@ -518,7 +527,12 @@ button { background: none; border: 0; cursor: pointer; }
     0 1px 1px rgba(0, 0, 0, 0.50),
     0 2px 8px rgba(0, 0, 0, 0.30);
 }
-.address-strip__group { display: flex; gap: 1.2rem; align-items: center; }
+.address-strip__group { display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap; }
+@media (max-width: 640px) {
+  .address-strip { font-size: 0.62rem; gap: 0.6rem; padding-inline: 1rem; }
+  .address-strip__group { gap: 0.6rem; }
+  .address-strip__group--secondary { display: none; }
+}
 .address-strip__dot {
   display: inline-block;
   width: 5px; height: 5px; border-radius: 50%;
