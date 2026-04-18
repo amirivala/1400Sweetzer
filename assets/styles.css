@@ -192,11 +192,13 @@ button { background: none; border: 0; cursor: pointer; }
     CTAs) absolutely positioned over the top.                     */
 .stage {
   position: relative;
-  min-height: 100vh;
-  /* fill all available space, but never less than 720 on desktop */
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
+  height: 100vh;
+  /* Lock to exact viewport so the photo fills the screen and all chrome
+     (top bar, hero, address strip) overlays it — no scroll, no whitespace
+     below. svh handles iOS dynamic browser bars. */
+  height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
   isolation: isolate;
   overflow: hidden;
   background: var(--ink);
@@ -321,15 +323,16 @@ button { background: none; border: 0; cursor: pointer; }
 
 /* ---------- The hero content ------------------------------ */
 .hero {
-  flex: 1;
   display: grid;
   place-items: center;
   text-align: center;
-  padding: var(--gap-4) clamp(1rem, 4vw, 3rem) clamp(2rem, 6vh, 5rem);
+  padding: clamp(0.5rem, 1vh, 1.5rem) clamp(1rem, 4vw, 3rem);
+  min-height: 0; /* allow the row to shrink within the stage's grid */
+  overflow: hidden;
 }
 .hero__inner {
   display: grid;
-  gap: clamp(1.2rem, 2vh + 0.5rem, 2rem);
+  gap: clamp(0.9rem, 2vh + 0.3rem, 1.8rem);
   justify-items: center;
   max-width: 1100px;
 }
@@ -383,22 +386,39 @@ button { background: none; border: 0; cursor: pointer; }
   max-width: min(60vw, 520px);
 }
 
-/* The big italic display headline */
+/* The big italic display headline.
+   Two-line treatment: a small prelude line ("Welcome") above a much
+   larger main line ("to Sunset Penthouse."). */
 .hero-display {
   font-family: var(--serif);
   font-style: italic;
   font-weight: 400;
   font-variation-settings: "opsz" 144, "SOFT" 30;
-  font-size: var(--step-display);
-  line-height: 0.92;
-  letter-spacing: -0.02em;
   color: var(--paper);
-  text-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.45);
   text-wrap: balance;
-  max-width: 14ch;
   margin-inline: auto;
+  display: grid;
+  justify-items: center;
+  gap: clamp(0.05rem, 0.5vh, 0.4rem);
 }
 .hero-display .br { display: block; }
+
+.hero-display__small {
+  font-size: clamp(1.6rem, 0.8rem + 3.5vw, 3.5rem);
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--paper-mute);
+  font-variation-settings: "opsz" 60, "SOFT" 50;
+}
+.hero-display__big {
+  font-size: clamp(2.6rem, 1.2rem + 7vw, 8rem);
+  font-weight: 400;
+  line-height: 0.94;
+  letter-spacing: -0.025em;
+  max-width: 14ch;
+}
 
 /* The supporting paragraph under the headline */
 .hero-sub {

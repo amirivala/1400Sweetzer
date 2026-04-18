@@ -62,8 +62,8 @@
         </a>
 
         <h1 class="hero-display blur-in delay-3">
-          <span class="br" id="heroLine1">Welcome home,</span>
-          <span class="br" id="heroLine2">to Sunset Penthouse.</span>
+          <span class="br hero-display__small">Welcome</span>
+          <span class="br hero-display__big">to Sunset Penthouse.</span>
         </h1>
 
         <p class="hero-sub blur-in delay-4">
@@ -127,8 +127,8 @@
         if (profile?.full_name) firstName = profile.full_name.split(' ')[0];
       } catch {}
 
-      // Personalize the headline + nav label
-      document.getElementById('heroLine1').textContent = `Welcome home, ${firstName}.`;
+      // Personalize the nav label only — the hero headline stays
+      // a clean two-line "Welcome / to Sunset Penthouse."
       document.getElementById('navName').textContent = firstName;
 
       // Today's date pill
