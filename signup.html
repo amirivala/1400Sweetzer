@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#0c0a09" />
-  <title>Sign in · Sunset Penthouse</title>
+  <title>Request access · Sunset Penthouse</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -19,25 +19,29 @@
       <span class="auth-brand-name">Sunset Penthouse</span>
     </div>
 
-    <h1 class="auth-title">Sign in.</h1>
-    <p class="auth-sub">A one-tap link will arrive in your inbox. No password to remember.</p>
+    <h1 class="auth-title">Request access.</h1>
+    <p class="auth-sub">A board member will approve your account. You'll get an email when you're in.</p>
 
-    <form id="signinForm" novalidate>
+    <form id="signupForm" novalidate>
+      <div class="field">
+        <label for="full_name">Full name</label>
+        <input type="text" id="full_name" required autocomplete="name" placeholder="Your name" />
+      </div>
+      <div class="field">
+        <label for="unit_number">Unit</label>
+        <input type="text" id="unit_number" required placeholder="e.g. 4B" maxlength="20" />
+      </div>
+      <div class="field">
+        <label for="phone">Phone</label>
+        <input type="tel" id="phone" required autocomplete="tel" placeholder="(555) 123-4567" maxlength="40" />
+      </div>
       <div class="field">
         <label for="email">Email</label>
-        <input
-          type="email"
-          id="email"
-          name="email"
-          placeholder="you@example.com"
-          required
-          autocomplete="email"
-          autofocus
-        />
+        <input type="email" id="email" required autocomplete="email" placeholder="you@example.com" />
       </div>
 
       <button type="submit" class="cta cta--auth">
-        <span>Send the magic link</span>
+        <span>Request access</span>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M7 17L17 7"/><path d="M7 7h10v10"/>
         </svg>
@@ -47,7 +51,7 @@
     <p id="status" class="auth-status" role="status"></p>
 
     <p class="auth-foot">
-      Not a resident yet? <a href="/signup.html">Request access</a>
+      Already a resident? <a href="/auth/signin.html">Sign in</a>
     </p>
   </div>
 
@@ -55,31 +59,44 @@
   <script src="/assets/env.js"></script>
   <script src="/assets/supabase-client.js"></script>
   <script>
-    const form = document.getElementById('signinForm');
+    const form = document.getElementById('signupForm');
     const status = document.getElementById('status');
     const button = form.querySelector('button[type="submit"]');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('email').value.trim();
-      if (!email) return;
+      const full_name   = document.getElementById('full_name').value.trim();
+      const unit_number = document.getElementById('unit_number').value.trim();
+      const phone       = document.getElementById('phone').value.trim();
+      const email       = document.getElementById('email').value.trim();
+      if (!full_name || !unit_number || !phone || !email) {
+        status.textContent = 'All fields are required.';
+        return;
+      }
 
       button.disabled = true;
       button.style.opacity = '0.6';
-      status.textContent = 'Sending…';
+      status.textContent = 'Sending\u2026';
 
+      // signInWithOtp with shouldCreateUser:true (default) creates the
+      // auth user on first request. The user_metadata in `data` is read
+      // by the handle_new_user trigger to populate the profile row with
+      // status='pending'.
       const { error } = await window.sb.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${location.origin}/auth/callback.html` },
+        options: {
+          data: { full_name, unit_number, phone },
+          emailRedirectTo: `${location.origin}/auth/callback.html`,
+        },
       });
 
       button.disabled = false;
       button.style.opacity = '';
 
       if (error) {
-        status.textContent = `Couldn't send: ${error.message}`;
+        status.textContent = 'Couldn\u2019t request: ' + error.message;
       } else {
-        status.textContent = `Sent. Check your inbox at ${email}.`;
+        status.textContent = 'Sent. Click the link in the email at ' + email + ' to confirm — then a board member will approve you.';
         button.querySelector('span').textContent = 'Sent ✓';
       }
     });

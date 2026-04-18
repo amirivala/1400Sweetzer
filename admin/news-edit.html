@@ -157,14 +157,43 @@
         return payload;
       };
 
+      // Fire the email pipeline (only on transition to published).
+      const sendEmail = async (postId) => {
+        statusEl.textContent = 'Published \u2713 \u00b7 sending emails\u2026';
+        try {
+          const res = await fetch(`${window.ENV.SUPABASE_URL}/functions/v1/send_news_email`, {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + session.access_token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ post_id: postId }),
+          });
+          if (!res.ok) {
+            const txt = await res.text();
+            statusEl.textContent = 'Published \u2713 \u00b7 email failed: ' + txt.slice(0, 140);
+            return;
+          }
+          const result = await res.json();
+          const n = result.sent || 0;
+          statusEl.textContent = `Published \u2713 \u00b7 emailed ${n} resident${n === 1 ? '' : 's'}`;
+        } catch (e) {
+          statusEl.textContent = 'Published \u2713 \u00b7 email failed: ' + (e?.message || e);
+        }
+      };
+
       const save = async (publish) => {
         statusEl.textContent = 'Saving…';
         draftBtn.disabled = publishBtn.disabled = true;
+
+        const wasPublishedBefore = isPublished;
+        const willEmail = publish && emailEl.checked && !wasPublishedBefore;
 
         const payload = collect(publish);
         if (!payload) { draftBtn.disabled = publishBtn.disabled = false; return; }
 
         let error;
+        let savedId = id;
         if (id) {
           ({ error } = await window.sb.from('news_posts').update(payload).eq('id', id));
         } else {
@@ -172,6 +201,7 @@
             .from('news_posts').insert(payload).select('id').single();
           error = iErr;
           if (data?.id) {
+            savedId = data.id;
             // Rewrite URL so subsequent saves edit, not insert.
             history.replaceState(null, '', '/admin/news-edit.html?id=' + encodeURIComponent(data.id));
           }
@@ -187,6 +217,7 @@
           publishBtnLabel.textContent = 'Save changes';
           deleteBtn.style.display = '';
           pageTitle.textContent = 'Edit post.';
+          if (willEmail && savedId) await sendEmail(savedId);
         } else {
           statusEl.textContent = 'Draft saved \u2713';
           deleteBtn.style.display = '';
