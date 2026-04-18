@@ -1,6 +1,7 @@
-// Public Supabase config — safe to commit. The anon key is meant for browser use;
-// row-level security in the database controls what callers can actually access.
+// Public Supabase config — safe to commit. Both the legacy `anon` JWT key
+// and the newer `sb_publishable_*` key are designed for browser use; row-level
+// security in the database controls what callers can actually access.
 window.ENV = {
-  SUPABASE_URL: 'https://YOUR_PROJECT_REF.supabase.co',
-  SUPABASE_ANON_KEY: 'YOUR_ANON_KEY_HERE',
+  SUPABASE_URL: 'https://nvazngprbjccclzmgphg.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_Dm9QjMYym_e0kwzMo4v3fA_WPangWJB',
 };
