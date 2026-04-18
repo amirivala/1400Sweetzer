@@ -2,20 +2,53 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f5f0e6" />
   <title>Sign in · 1400 Sweetzer</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
   <link rel="stylesheet" href="/assets/styles.css" />
 </head>
-<body>
-  <main class="auth">
-    <h1>Sign in</h1>
-    <form id="signinForm">
-      <label for="email">Email</label>
-      <input type="email" id="email" name="email" required autocomplete="email" />
-      <button type="submit" class="btn btn--primary">Send magic link</button>
+<body class="auth-shell">
+
+  <div class="auth-card rise rise-2">
+    <div class="plaque">
+      <span class="plaque__num">1400</span>
+      <span class="plaque__rule"></span>
+      <span class="plaque__name">Sweetzer</span>
+    </div>
+
+    <h1 class="auth-title">Sign in</h1>
+    <p class="auth-sub">We'll email you a one-tap link. No password to forget.</p>
+
+    <form id="signinForm" novalidate>
+      <div class="field">
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="you@example.com"
+          required
+          autocomplete="email"
+          autofocus
+        />
+      </div>
+
+      <button type="submit" class="btn btn--terracotta btn--block">
+        Send the magic link
+        <span class="btn__arrow" aria-hidden="true">→</span>
+      </button>
     </form>
+
     <p id="status" class="status" role="status"></p>
-  </main>
+
+    <p class="landing__small" style="margin-top:1.4rem;">
+      Not a resident yet? <a href="/" style="color:var(--terracotta-d); text-decoration:underline;">Request access</a>
+    </p>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/env.js"></script>
@@ -23,18 +56,33 @@
   <script>
     const form = document.getElementById('signinForm');
     const status = document.getElementById('status');
+    const button = form.querySelector('button[type="submit"]');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      status.textContent = 'Sending…';
       const email = document.getElementById('email').value.trim();
+      if (!email) return;
+
+      button.disabled = true;
+      button.style.opacity = '0.6';
+      status.textContent = 'Sending…';
+
       const { error } = await window.sb.auth.signInWithOtp({
         email,
         options: { emailRedirectTo: `${location.origin}/auth/callback.html` },
       });
-      status.textContent = error
-        ? `Error: ${error.message}`
-        : 'Check your email for the sign-in link.';
+
+      button.disabled = false;
+      button.style.opacity = '';
+
+      if (error) {
+        status.textContent = `Couldn't send: ${error.message}`;
+        status.style.color = 'var(--terracotta-d)';
+      } else {
+        status.textContent = `Sent. Check your inbox at ${email}.`;
+        status.style.color = 'var(--ink-soft)';
+        button.textContent = 'Sent ✓';
+      }
     });
   </script>
 </body>

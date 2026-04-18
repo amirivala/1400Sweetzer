@@ -2,21 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f5f0e6" />
   <title>Signing you in…</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
   <link rel="stylesheet" href="/assets/styles.css" />
 </head>
-<body>
-  <main class="auth">
-    <p id="status" class="status" role="status">Signing you in…</p>
-  </main>
+<body class="auth-shell">
+
+  <div class="auth-card fade">
+    <div class="plaque">
+      <span class="plaque__num">1400</span>
+      <span class="plaque__rule"></span>
+      <span class="plaque__name">Sweetzer</span>
+    </div>
+    <h1 class="auth-title">One moment…</h1>
+    <p id="status" class="auth-sub" role="status">Verifying your magic link.</p>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/env.js"></script>
   <script src="/assets/supabase-client.js"></script>
   <script>
-    // supabase-js auto-parses the URL hash and stores the session.
-    // We just need to wait for it, then route based on profile status.
     (async () => {
       const status = document.getElementById('status');
 
@@ -25,8 +35,8 @@
 
       const { data: { session } } = await window.sb.auth.getSession();
       if (!session) {
-        status.textContent = 'Sign-in failed. Try again.';
-        setTimeout(() => (location.href = '/auth/signin.html'), 1500);
+        status.textContent = "We couldn't verify that link. Try signing in again.";
+        setTimeout(() => (location.href = '/auth/signin.html'), 1800);
         return;
       }
 
@@ -37,20 +47,19 @@
         .single();
 
       if (error || !profile) {
-        // Edge case: trigger didn't run, or row was deleted.
         location.href = '/';
         return;
       }
 
       if (profile.status === 'approved') {
-        location.href = '/home.html';
+        status.textContent = "You're in. Taking you home…";
+        setTimeout(() => (location.href = '/home.html'), 350);
       } else if (profile.status === 'pending') {
-        // pending.html doesn't exist yet (Plan 2). For now, sign them out.
         await window.sb.auth.signOut();
-        status.textContent = 'Your account is pending approval.';
+        status.textContent = "You're on the list. A board member will approve you shortly.";
       } else {
         await window.sb.auth.signOut();
-        status.textContent = 'Your account is no longer active.';
+        status.textContent = "Your account is no longer active.";
       }
     })();
   </script>

@@ -2,15 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>1400 Sweetzer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f5f0e6" />
+  <title>1400 Sweetzer · The Resident Portal</title>
+  <meta name="description" content="A private portal for residents of 1400 Sweetzer." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
   <link rel="stylesheet" href="/assets/styles.css" />
 </head>
 <body>
-  <main class="landing">
-    <h1>1400 Sweetzer</h1>
-    <p class="tagline">The resident portal.</p>
-    <a class="btn btn--primary" href="/auth/signin.html">Sign in</a>
+
+  <main class="container landing">
+    <section class="landing__hero">
+
+      <div class="landing__intro">
+        <span class="eyebrow rise rise-1">The Resident Portal · West Hollywood</span>
+
+        <div class="plaque rise rise-2">
+          <span class="plaque__num">1400</span>
+          <span class="plaque__rule"></span>
+          <span class="plaque__name">Sweetzer</span>
+        </div>
+
+        <p class="landing__lede rise rise-3">
+          A small place for the news, the people, and the upkeep of one mid-century
+          building on Sweetzer Avenue.
+        </p>
+
+        <div class="landing__cta-row rise rise-4">
+          <a class="btn btn--primary" href="/auth/signin.html">
+            Sign in
+            <span class="btn__arrow" aria-hidden="true">→</span>
+          </a>
+          <a class="btn btn--ghost" href="#">Request access</a>
+        </div>
+
+        <p class="landing__small rise rise-5">
+          Residents only · Approved by a board member
+        </p>
+      </div>
+
+      <figure class="building-frame fade" aria-label="1400 Sweetzer building, evening">
+        <img
+          class="building-frame__photo"
+          src="/assets/building.jpg"
+          alt="The facade of 1400 Sweetzer at night, lit balconies and palm trees"
+          onerror="this.style.display='none'"
+          loading="eager"
+          fetchpriority="high"
+        />
+        <div class="building-frame__top">
+          <span>EST. MID-CENTURY</span>
+          <span>WEHO · CA</span>
+        </div>
+        <figcaption class="building-frame__overlay">
+          <span class="building-frame__caption">N Sweetzer Ave</span>
+          <h2 style="font-family:var(--serif); font-weight:500; font-size:clamp(2rem,5vw,3.4rem); letter-spacing:-0.02em; line-height:0.95; margin-top:0.25rem;">
+            One building.<br />
+            <em style="font-weight:400; color:#f0d4ad;">One small portal.</em>
+          </h2>
+        </figcaption>
+      </figure>
+
+    </section>
   </main>
+
+  <footer class="foot">
+    <div class="foot__inner">
+      <span>1400 N Sweetzer Ave · West Hollywood, CA 90069</span>
+      <span>Private · Residents only</span>
+    </div>
+  </footer>
+
 </body>
 </html>
