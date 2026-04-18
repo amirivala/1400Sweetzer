@@ -676,3 +676,550 @@ button { background: none; border: 0; cursor: pointer; }
   .blur-in, .rise, .fade { opacity: 1; transform: none; filter: none; }
   html { scroll-behavior: auto; }
 }
+
+/* ============================================================
+   Inner pages: news / calendar / directory / providers / account
+   Dark scrollable layout. Same top bar + brand mark as the home,
+   but the cinematic full-bleed photo gives way to an editorial
+   reading layout with a subtle ambient backdrop.
+   ============================================================ */
+.page {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  background: var(--ink);
+  position: relative;
+  isolation: isolate;
+  color: var(--paper);
+}
+.page::before {
+  /* Soft ambient warm glow that hints at the building's palette
+     without competing with content. Fixed so it stays put on scroll. */
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 50% at 80% -10%, rgba(217, 106, 63, 0.16), transparent 70%),
+    radial-gradient(ellipse 70% 60% at 0% 100%, rgba(225, 167, 107, 0.10), transparent 70%),
+    var(--ink);
+  z-index: -2;
+}
+.page::after {
+  /* Fine paper grain matching the rest of the brand */
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.04 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  z-index: -1;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* The page-level top bar shares classes with .top-bar but on inner
+   pages we want it sticky and slightly translucent over content. */
+.page > .top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(12, 10, 9, 0.55);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.page__container {
+  width: min(1180px, 100% - 2.5rem);
+  margin-inline: auto;
+  flex: 1;
+  padding-block: clamp(1.5rem, 3vh, 2.5rem) clamp(2rem, 5vh, 4rem);
+}
+
+/* ---------- Page header (kicker + italic title + sub) ----- */
+.page-header {
+  padding-block: clamp(1.5rem, 3vh, 2.5rem) clamp(1rem, 2vh, 1.75rem);
+  display: grid;
+  gap: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  margin-bottom: clamp(1.5rem, 3vh, 2.5rem);
+}
+
+.page-header__kicker {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--terracotta);
+}
+
+.page-header__title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-variation-settings: "opsz" 144, "SOFT" 30;
+  font-size: clamp(2.4rem, 1.4rem + 4vw, 4.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+  color: var(--paper);
+  text-wrap: balance;
+}
+
+.page-header__sub {
+  margin-top: 0.4rem;
+  color: var(--paper-mute);
+  font-size: 1.02rem;
+  font-weight: 300;
+  max-width: 60ch;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+/* ---------- Section divider rule ------------------------- */
+.rule {
+  display: block;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-block: var(--gap-4);
+}
+
+/* ---------- Cards (dark theme) --------------------------- */
+.card {
+  position: relative;
+  border-radius: var(--radius-lg);
+  padding: 1.4rem 1.5rem 1.5rem;
+  display: grid;
+  gap: 0.75rem;
+  color: var(--paper);
+  transition: transform 0.3s var(--ease), background 0.3s var(--ease);
+  isolation: isolate;
+}
+.card:hover { transform: translateY(-2px); }
+.card a, .card a:hover { color: inherit; }
+
+/* ---------- News feed ------------------------------------ */
+.news-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: var(--gap-3);
+}
+.news-grid--featured-first .news-card:first-child {
+  grid-column: 1 / -1;
+}
+.news-grid--featured-first .news-card:first-child .news-card__title {
+  font-size: clamp(1.6rem, 1.0rem + 1.8vw, 2.4rem);
+}
+
+.news-card {
+  padding: 1.5rem 1.6rem 1.7rem;
+  display: grid;
+  gap: 0.7rem;
+  align-content: start;
+}
+.news-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--paper-dim);
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.news-card__title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-variation-settings: "opsz" 110, "SOFT" 50;
+  font-size: clamp(1.25rem, 0.9rem + 1.2vw, 1.7rem);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+.news-card__lede {
+  color: var(--paper-mute);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.news-card__byline {
+  margin-top: 0.4rem;
+  color: var(--paper-low);
+  font-size: 0.82rem;
+}
+
+/* ---------- Single post (article) ------------------------ */
+.article {
+  max-width: 70ch;
+  margin: 0 auto;
+}
+.article__back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--paper-mute);
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: clamp(1.5rem, 3vh, 2.5rem);
+}
+.article__back:hover { color: var(--paper); }
+
+.article__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--paper-dim);
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 1.2rem;
+}
+
+.article__title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-variation-settings: "opsz" 144, "SOFT" 30;
+  font-size: clamp(2.2rem, 1.4rem + 3vw, 3.6rem);
+  line-height: 1;
+  letter-spacing: -0.025em;
+  color: var(--paper);
+  margin-bottom: 1.5rem;
+  text-wrap: balance;
+}
+
+.article__cover {
+  margin-bottom: 1.8rem;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.article__body {
+  color: var(--paper-mute);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+.article__body h2,
+.article__body h3 {
+  color: var(--paper);
+  font-family: var(--serif);
+  font-style: italic;
+  margin-top: 1.6em;
+  margin-bottom: 0.4em;
+  letter-spacing: -0.015em;
+}
+.article__body h2 { font-size: 1.7rem; }
+.article__body h3 { font-size: 1.35rem; }
+.article__body p { margin-bottom: 1em; text-wrap: pretty; }
+.article__body a {
+  color: var(--terracotta);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+.article__body ul, .article__body ol { margin: 1em 0 1em 1.5em; }
+.article__body li { margin-bottom: 0.4em; }
+.article__body strong { color: var(--paper); font-weight: 500; }
+.article__body em { font-style: italic; }
+.article__body img { border-radius: var(--radius); margin-block: 1.5em; }
+
+.article__byline {
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--paper-dim);
+  font-size: 0.9rem;
+}
+
+/* ---------- Calendar list -------------------------------- */
+.event-list { display: grid; gap: var(--gap-3); }
+
+.event-row {
+  padding: 1.4rem 1.5rem;
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 1.3rem;
+  align-items: center;
+}
+@media (max-width: 540px) {
+  .event-row { grid-template-columns: 64px 1fr; gap: 1rem; padding: 1.1rem 1.2rem; }
+}
+
+.event-row__title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.3rem;
+  line-height: 1.15;
+  color: var(--paper);
+  margin-bottom: 0.3rem;
+  letter-spacing: -0.015em;
+}
+.event-row__when {
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  color: var(--paper-mute);
+}
+.event-row__where {
+  margin-top: 0.2rem;
+  color: var(--paper-mute);
+  font-size: 0.92rem;
+}
+.event-row__desc {
+  margin-top: 0.55rem;
+  color: var(--paper-dim);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  max-width: 60ch;
+}
+
+/* ---------- Directory grid ------------------------------- */
+.dir-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: var(--gap-3);
+}
+
+.dir-card {
+  padding: 1.3rem 1.4rem 1.4rem;
+  display: grid;
+  gap: 0.55rem;
+  align-content: start;
+}
+.dir-card__unit {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-variation-settings: "opsz" 110;
+  font-size: 2.1rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--paper);
+}
+.dir-card__name {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 1.05rem;
+  color: var(--paper);
+}
+.dir-card__phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.95rem;
+  color: var(--paper-mute);
+  letter-spacing: -0.01em;
+  margin-top: 0.2rem;
+}
+.dir-card__phone svg { color: var(--terracotta); }
+.dir-card__phone:hover { color: var(--paper); }
+.dir-card__you {
+  margin-top: 0.6rem;
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--terracotta);
+}
+
+/* ---------- Providers grid ------------------------------- */
+.provider-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+  gap: var(--gap-3);
+}
+.provider-card {
+  padding: 1.4rem 1.5rem 1.5rem;
+  display: grid;
+  gap: 0.6rem;
+  align-content: start;
+}
+.provider-card__cat {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--terracotta);
+}
+.provider-card__name {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.4rem;
+  line-height: 1.1;
+  color: var(--paper);
+  letter-spacing: -0.015em;
+}
+.provider-card__phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  color: var(--paper-mute);
+  font-size: 1.0rem;
+  margin-top: 0.2rem;
+}
+.provider-card__phone svg { color: var(--terracotta); }
+.provider-card__phone:hover { color: var(--paper); }
+.provider-card__notes {
+  margin-top: 0.5rem;
+  color: var(--paper-dim);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+/* Filter chip row */
+.chip-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: var(--gap-3);
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.45rem 0.95rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--paper-mute);
+  font-size: 0.86rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+.chip:hover { color: var(--paper); }
+.chip[aria-pressed="true"] {
+  background: var(--paper);
+  color: var(--ink);
+  border-color: var(--paper);
+}
+
+/* ---------- Account form --------------------------------- */
+.account-card {
+  padding: 1.8rem 1.8rem 1.6rem;
+  max-width: 540px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.2rem;
+}
+.account-row {
+  display: grid;
+  gap: 0.4rem;
+}
+.account-row label {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+.account-row input[type="text"],
+.account-row input[type="tel"],
+.account-row input[type="email"] {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--paper);
+  font-size: 1rem;
+  outline: 0;
+  transition: border-color 0.18s var(--ease), background 0.2s var(--ease), box-shadow 0.18s var(--ease);
+}
+.account-row input::placeholder { color: var(--paper-low); }
+.account-row input[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.account-row input:focus {
+  border-color: var(--terracotta);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 4px rgba(217, 106, 63, 0.18);
+}
+
+/* Toggle (checkbox styled as switch) */
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.toggle__label {
+  display: grid;
+  gap: 0.15rem;
+  flex: 1;
+}
+.toggle__title { color: var(--paper); font-size: 0.95rem; font-weight: 500; }
+.toggle__hint { color: var(--paper-dim); font-size: 0.82rem; line-height: 1.35; }
+.toggle__switch {
+  position: relative;
+  width: 44px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s var(--ease);
+  flex-shrink: 0;
+}
+.toggle__switch::after {
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 20px; height: 20px;
+  background: var(--paper);
+  border-radius: 50%;
+  transition: transform 0.22s var(--ease);
+}
+.toggle input { display: none; }
+.toggle input:checked ~ .toggle__switch { background: var(--terracotta); }
+.toggle input:checked ~ .toggle__switch::after { transform: translateX(18px); }
+
+.account-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.4rem;
+  align-items: center;
+}
+.account-status {
+  margin-top: 0.4rem;
+  color: var(--paper-mute);
+  font-size: 0.88rem;
+  min-height: 1.2em;
+}
+
+/* ---------- Empty state ---------------------------------- */
+.empty {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  border-radius: var(--radius-xl);
+  color: var(--paper-mute);
+  border: 1px dashed rgba(255, 255, 255, 0.10);
+}
+.empty__title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.6rem;
+  color: var(--paper);
+  margin-bottom: 0.4rem;
+  letter-spacing: -0.015em;
+}
+.empty__sub {
+  color: var(--paper-mute);
+  font-size: 0.95rem;
+  max-width: 40ch;
+  margin: 0 auto;
+  line-height: 1.45;
+}
+

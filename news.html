@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>News · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">News</span>
+      <h1 class="page-header__title">From the building.</h1>
+      <p class="page-header__sub">
+        Notices from the board, updates on maintenance, and small bits
+        of news that keep everyone in the loop.
+      </p>
+    </header>
+
+    <section id="newsList" aria-live="polite">
+      <div class="empty">
+        <div class="empty__title">Loading…</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/auth-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const list = document.getElementById('newsList');
+
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+
+      const { data: posts, error } = await window.sb
+        .from('news_posts')
+        .select(`
+          id, title, body, cover_image_url, published_at,
+          author:profiles!author_id ( full_name )
+        `)
+        .eq('published', true)
+        .order('published_at', { ascending: false });
+
+      if (error) {
+        mount(list,
+          el('div', { class: 'empty' },
+            el('div', { class: 'empty__title', text: 'Trouble loading news' }),
+            el('p', { class: 'empty__sub', text: error.message }),
+          ));
+        return;
+      }
+
+      if (!posts || posts.length === 0) {
+        mount(list,
+          el('div', { class: 'empty' },
+            el('div', { class: 'empty__title', text: 'No posts yet' }),
+            el('p', {
+              class: 'empty__sub',
+              text: "When the board posts a notice, it'll appear here.",
+            }),
+          ));
+        return;
+      }
+
+      list.className = 'news-grid news-grid--featured-first';
+
+      const cards = posts.map((p, idx) => {
+        const lede = fmt.stripHtml(p.body).slice(0, 220);
+        const author = p.author?.full_name || 'The board';
+        return el('article', {
+            class: 'card news-card liquid-glass rise',
+            style: { animationDelay: `${0.10 + idx * 0.06}s` },
+          },
+          el('div', { class: 'news-card__meta' },
+            el('time', { datetime: p.published_at, text: fmt.date(p.published_at) }),
+            el('span', { 'aria-hidden': 'true', text: '·' }),
+            el('span', { text: author }),
+          ),
+          el('a', {
+            class: 'news-card__title',
+            href: '/post.html?id=' + encodeURIComponent(p.id),
+            text: p.title,
+          }),
+          el('p', {
+            class: 'news-card__lede',
+            text: lede + (lede.length >= 220 ? '…' : ''),
+          }),
+        );
+      });
+
+      mount(list, ...cards);
+    })();
+  </script>
+</body>
+</html>

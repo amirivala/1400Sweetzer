@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Directory · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Directory</span>
+      <h1 class="page-header__title">Your neighbors.</h1>
+      <p class="page-header__sub">
+        Who lives where. If you'd rather not appear here, you can hide
+        your number from your <a href="/account.html" style="color: var(--terracotta); text-decoration: underline;">account</a>.
+      </p>
+    </header>
+
+    <section id="dirGrid" aria-live="polite">
+      <div class="empty">
+        <div class="empty__title">Loading…</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/auth-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const grid = document.getElementById('dirGrid');
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+
+      // RLS automatically enforces:
+      //   - returns my own profile row, plus other approved residents
+      //     who haven't hidden their directory entry.
+      const { data: rows, error } = await window.sb
+        .from('profiles')
+        .select('id, full_name, unit_number, phone, directory_visible, status, role')
+        .order('unit_number', { ascending: true });
+
+      if (error) {
+        mount(grid,
+          el('div', { class: 'empty' },
+            el('div', { class: 'empty__title', text: 'Trouble loading directory' }),
+            el('p', { class: 'empty__sub', text: error.message }),
+          ));
+        return;
+      }
+
+      // Filter to approved residents we should show. The "you" row
+      // (current user) is always present even if hidden.
+      const meId = session.user.id;
+      const visible = (rows || []).filter((r) =>
+        r.id === meId || (r.status === 'approved' && r.directory_visible)
+      );
+
+      if (visible.length === 0) {
+        mount(grid,
+          el('div', { class: 'empty' },
+            el('div', { class: 'empty__title', text: 'No neighbors listed yet' }),
+            el('p', {
+              class: 'empty__sub',
+              text: 'As residents sign up and get approved, they\u2019ll appear here.',
+            }),
+          ));
+        return;
+      }
+
+      grid.className = 'dir-grid';
+
+      const phoneIcon = () => {
+        const NS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('width', '14'); svg.setAttribute('height', '14');
+        svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2');
+        svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
+        const p = document.createElementNS(NS, 'path');
+        p.setAttribute('d', 'M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z');
+        svg.appendChild(p);
+        return svg;
+      };
+
+      const cards = visible.map((r, idx) => {
+        const isMe = r.id === meId;
+        const phoneHref = r.phone ? 'tel:' + String(r.phone).replace(/[^+\d]/g, '') : null;
+        return el('article', {
+            class: 'card dir-card liquid-glass rise',
+            style: { animationDelay: `${0.10 + idx * 0.05}s` },
+          },
+          el('div', { class: 'dir-card__unit', text: r.unit_number || '—' }),
+          el('div', { class: 'dir-card__name', text: r.full_name || 'Unnamed resident' }),
+          r.phone
+            ? el('a', { class: 'dir-card__phone', href: phoneHref }, phoneIcon(), r.phone)
+            : null,
+          isMe ? el('span', { class: 'dir-card__you', text: 'That\u2019s you' }) : null,
+        );
+      });
+
+      mount(grid, ...cards);
+    })();
+  </script>
+</body>
+</html>

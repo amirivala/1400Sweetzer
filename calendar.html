@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Calendar · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Calendar</span>
+      <h1 class="page-header__title">Coming up.</h1>
+      <p class="page-header__sub">
+        Events at the building — board meetings, get-togethers, and the
+        occasional reminder. Most happen in the lobby or by the pool.
+      </p>
+    </header>
+
+    <section id="eventList" aria-live="polite">
+      <div class="empty">
+        <div class="empty__title">Loading…</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/auth-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const list = document.getElementById('eventList');
+
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+
+      // Show events from a few hours ago onward (so day-of events stay
+      // visible past their start time).
+      const since = new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString();
+
+      const { data: events, error } = await window.sb
+        .from('events')
+        .select('id, title, description, location, start_at, end_at')
+        .gte('start_at', since)
+        .order('start_at', { ascending: true });
+
+      if (error) {
+        mount(list,
+          el('div', { class: 'empty' },
+            el('div', { class: 'empty__title', text: 'Trouble loading events' }),
+            el('p', { class: 'empty__sub', text: error.message }),
+          ));
+        return;
+      }
+
+      if (!events || events.length === 0) {
+        mount(list,
+          el('div', { class: 'empty' },
+            el('div', { class: 'empty__title', text: 'No events on the calendar' }),
+            el('p', {
+              class: 'empty__sub',
+              text: 'A quiet stretch. Check back when the board posts the next get-together.',
+            }),
+          ));
+        return;
+      }
+
+      list.className = 'event-list';
+
+      const dateBlock = (iso) =>
+        el('div', { class: 'date-block' },
+          el('span', { class: 'date-block__month', text: fmt.monShort(iso) }),
+          el('span', { class: 'date-block__day', text: fmt.day(iso) }),
+        );
+
+      const whenLine = (e) => {
+        const startDate = fmt.longDate(e.start_at);
+        const startTime = fmt.time(e.start_at);
+        const endTime = e.end_at ? fmt.time(e.end_at) : null;
+        return endTime
+          ? `${startDate} · ${startTime}–${endTime}`
+          : `${startDate} · ${startTime}`;
+      };
+
+      const rows = events.map((e, idx) =>
+        el('article', {
+            class: 'card event-row liquid-glass rise',
+            style: { animationDelay: `${0.10 + idx * 0.06}s` },
+          },
+          dateBlock(e.start_at),
+          el('div', {},
+            el('h2', { class: 'event-row__title', text: e.title }),
+            el('p',  { class: 'event-row__when',  text: whenLine(e) }),
+            e.location ? el('p', { class: 'event-row__where', text: e.location }) : null,
+            e.description ? el('p', { class: 'event-row__desc', text: e.description }) : null,
+          ),
+        ));
+
+      mount(list, ...rows);
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Your account · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Account</span>
+      <h1 class="page-header__title">Your details.</h1>
+      <p class="page-header__sub">
+        Update your name and number, choose how you appear in the
+        directory, and manage email notifications.
+      </p>
+    </header>
+
+    <form id="accountForm" class="card account-card liquid-glass rise delay-2" autocomplete="off">
+
+      <div class="account-row">
+        <label for="email">Email</label>
+        <input id="email" type="email" disabled />
+      </div>
+
+      <div class="account-row">
+        <label for="full_name">Full name</label>
+        <input id="full_name" type="text" placeholder="Your name" required />
+      </div>
+
+      <div class="account-row">
+        <label for="unit_number">Unit number</label>
+        <input id="unit_number" type="text" placeholder="e.g. 4B" required />
+      </div>
+
+      <div class="account-row">
+        <label for="phone">Phone</label>
+        <input id="phone" type="tel" placeholder="(555) 123-4567" required />
+      </div>
+
+      <label class="toggle">
+        <input id="directory_visible" type="checkbox" />
+        <div class="toggle__label">
+          <span class="toggle__title">Show me in the directory</span>
+          <span class="toggle__hint">Other approved residents can see your unit and phone. Off means you're hidden.</span>
+        </div>
+        <span class="toggle__switch" aria-hidden="true"></span>
+      </label>
+
+      <label class="toggle">
+        <input id="email_news_optin" type="checkbox" />
+        <div class="toggle__label">
+          <span class="toggle__title">Email me when there's news</span>
+          <span class="toggle__hint">A short note when the board publishes a post. Off means inbox stays quiet.</span>
+        </div>
+        <span class="toggle__switch" aria-hidden="true"></span>
+      </label>
+
+      <div class="account-actions">
+        <button type="submit" class="cta cta--solid">
+          <span>Save changes</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 6L9 17l-5-5"/>
+          </svg>
+        </button>
+        <button type="button" id="signOutBtn" class="cta liquid-glass-strong">
+          <span>Sign out</span>
+        </button>
+        <p id="status" class="account-status" role="status"></p>
+      </div>
+
+    </form>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/auth-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const f = document.getElementById('accountForm');
+      const status = document.getElementById('status');
+
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+
+      const { data: profile, error } = await window.sb
+        .from('profiles')
+        .select('full_name, unit_number, phone, directory_visible, email_news_optin')
+        .eq('id', session.user.id)
+        .single();
+
+      if (error) {
+        status.textContent = 'Couldn\u2019t load your profile: ' + error.message;
+        return;
+      }
+
+      // Populate fields. textContent for the disabled email so we don't
+      // even put it in a value attribute that gets re-serialized.
+      f.email.value = session.user.email || '';
+      f.full_name.value = profile?.full_name || '';
+      f.unit_number.value = profile?.unit_number || '';
+      f.phone.value = profile?.phone || '';
+      f.directory_visible.checked = profile?.directory_visible !== false;
+      f.email_news_optin.checked = profile?.email_news_optin !== false;
+
+      f.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        status.textContent = 'Saving…';
+        const update = {
+          full_name: f.full_name.value.trim(),
+          unit_number: f.unit_number.value.trim(),
+          phone: f.phone.value.trim(),
+          directory_visible: f.directory_visible.checked,
+          email_news_optin: f.email_news_optin.checked,
+        };
+        const { error: upErr } = await window.sb
+          .from('profiles')
+          .update(update)
+          .eq('id', session.user.id);
+        status.textContent = upErr
+          ? 'Couldn\u2019t save: ' + upErr.message
+          : 'Saved \u2713';
+      });
+
+      document.getElementById('signOutBtn').addEventListener('click', async () => {
+        if (!confirm('Sign out of ' + (session.user.email || 'this account') + '?')) return;
+        await window.sb.auth.signOut();
+        location.href = '/';
+      });
+    })();
+  </script>
+</body>
+</html>
