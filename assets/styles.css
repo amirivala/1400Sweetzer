@@ -1409,6 +1409,200 @@ button { background: none; border: 0; cursor: pointer; }
   text-align: left;
 }
 
+/* ---------- Admin: dashboard tiles ----------------------- */
+.admin-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr));
+  gap: var(--gap-3);
+}
+.admin-tile {
+  padding: 1.4rem 1.5rem 1.5rem;
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+  border-radius: var(--radius-lg);
+  transition: transform 0.3s var(--ease), background 0.3s var(--ease);
+}
+.admin-tile:hover { transform: translateY(-2px); }
+.admin-tile__num {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 2.5rem;
+  line-height: 1;
+  color: var(--paper);
+  letter-spacing: -0.02em;
+  margin-bottom: 0.15rem;
+}
+.admin-tile__label {
+  font-family: var(--mono);
+  font-size: 0.74rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--paper-mute);
+}
+.admin-tile__hint {
+  margin-top: 0.4rem;
+  color: var(--paper-dim);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+/* ---------- Admin: list rows + tables -------------------- */
+.admin-list { display: grid; gap: 0.5rem; }
+.admin-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem 1.2rem;
+  border-radius: var(--radius);
+}
+.admin-row__main { display: grid; gap: 0.2rem; min-width: 0; }
+.admin-row__title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.15rem;
+  line-height: 1.15;
+  color: var(--paper);
+  letter-spacing: -0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.admin-row__meta {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--paper-mute);
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.admin-row__actions {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.btn-mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--paper-mute);
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s var(--ease), color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.btn-mini:hover { color: var(--paper); background: rgba(255, 255, 255, 0.08); }
+.btn-mini--danger { color: #f0a899; }
+.btn-mini--danger:hover {
+  color: #ff7d65;
+  background: rgba(217, 106, 63, 0.10);
+  border-color: rgba(217, 106, 63, 0.30);
+}
+
+.admin-status-pill {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius-pill);
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.admin-status-pill--published { background: rgba(111, 126, 90, 0.20); color: #a8b78d; }
+.admin-status-pill--draft     { background: rgba(255, 255, 255, 0.08); color: var(--paper-mute); }
+.admin-status-pill--admin     { background: rgba(217, 106, 63, 0.18); color: #f1ae93; }
+.admin-status-pill--pending   { background: rgba(201, 143, 44, 0.18); color: #f0c885; }
+.admin-status-pill--removed   { background: rgba(120, 120, 120, 0.20); color: #b8b0a3; }
+
+/* ---------- Admin: news editor (Quill chrome) ------------ */
+.editor-shell {
+  max-width: 800px;
+  margin: 0 auto;
+  display: grid;
+  gap: 1.4rem;
+}
+.editor-input-title {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 0.4rem 0;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-variation-settings: "opsz" 144;
+  font-size: clamp(2rem, 1.4rem + 2vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.025em;
+  color: var(--paper);
+  outline: none;
+}
+.editor-input-title::placeholder { color: var(--paper-low); font-style: italic; }
+
+.editor-cover {
+  display: grid;
+  gap: 0.4rem;
+}
+.editor-cover input {
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--paper);
+  font-size: 0.9rem;
+  outline: 0;
+  font-family: var(--mono);
+}
+
+/* Quill chrome adapted to dark theme */
+#qeditor { border-radius: var(--radius); overflow: hidden; }
+.ql-toolbar.ql-snow {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-bottom: 0 !important;
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 8px 10px !important;
+}
+.ql-container.ql-snow {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  border-radius: 0 0 var(--radius) var(--radius);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 1rem;
+  min-height: 240px;
+}
+.ql-editor { padding: 1.2rem 1.4rem !important; line-height: 1.55; }
+.ql-editor.ql-blank::before {
+  color: var(--paper-low) !important;
+  font-style: italic;
+  font-family: var(--serif);
+}
+.ql-snow .ql-stroke { stroke: var(--paper-mute) !important; }
+.ql-snow .ql-fill   { fill:   var(--paper-mute) !important; }
+.ql-snow .ql-picker-label, .ql-snow .ql-picker-options { color: var(--paper-mute) !important; }
+.ql-snow .ql-picker-options { background: var(--ink-soft) !important; border-color: rgba(255,255,255,0.10) !important; }
+.ql-snow .ql-active .ql-stroke { stroke: var(--paper) !important; }
+.ql-snow .ql-active .ql-fill   { fill:   var(--paper) !important; }
+.ql-snow .ql-active .ql-picker-label { color: var(--paper) !important; }
+.ql-snow a { color: var(--terracotta) !important; }
+
+.editor-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+.editor-actions .spacer { flex: 1; }
+
 /* ---------- Empty state ---------------------------------- */
 .empty {
   padding: 3rem 1.5rem;

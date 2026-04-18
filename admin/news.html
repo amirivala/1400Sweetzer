@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>News · Admin · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Admin · News</span>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Posts.</h1>
+          <p class="page-header__sub">Write, edit, publish. Drafts stay private until you publish them.</p>
+        </div>
+        <a class="cta cta--solid" href="/admin/news-edit.html">
+          <span>+ New post</span>
+        </a>
+      </div>
+    </header>
+
+    <section id="postList" class="admin-list" aria-live="polite">
+      <div class="empty">
+        <div class="empty__title">Loading…</div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/admin-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const list = document.getElementById('postList');
+
+      const load = async () => {
+        const { data, error } = await window.sb
+          .from('news_posts')
+          .select(`
+            id, title, published, email_residents, published_at, created_at,
+            author:profiles!author_id ( full_name )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          mount(list,
+            el('div', { class: 'empty' },
+              el('div', { class: 'empty__title', text: 'Trouble loading posts' }),
+              el('p', { class: 'empty__sub', text: error.message }),
+            ));
+          return;
+        }
+        if (!data || data.length === 0) {
+          mount(list,
+            el('div', { class: 'empty' },
+              el('div', { class: 'empty__title', text: 'No posts yet' }),
+              el('p', { class: 'empty__sub', text: 'Tap "New post" to write the first one.' }),
+            ));
+          return;
+        }
+
+        const rows = data.map((p) => {
+          const dateIso = p.published_at || p.created_at;
+          const status = p.published
+            ? el('span', { class: 'admin-status-pill admin-status-pill--published', text: 'Published' })
+            : el('span', { class: 'admin-status-pill admin-status-pill--draft', text: 'Draft' });
+
+          return el('article', { class: 'card liquid-glass admin-row' },
+            el('div', { class: 'admin-row__main' },
+              el('a', {
+                class: 'admin-row__title',
+                href: '/admin/news-edit.html?id=' + encodeURIComponent(p.id),
+                text: p.title || 'Untitled',
+              }),
+              el('div', { class: 'admin-row__meta' },
+                status,
+                el('span', { text: fmt.date(dateIso) }),
+                p.author?.full_name ? el('span', { text: p.author.full_name }) : null,
+                p.published && p.email_residents ? el('span', { text: '· emailed' }) : null,
+              ),
+            ),
+            el('div', { class: 'admin-row__actions' },
+              el('a', {
+                class: 'btn-mini',
+                href: p.published ? '/post.html?id=' + encodeURIComponent(p.id) : '#',
+                text: p.published ? 'View' : '—',
+              }),
+              el('a', {
+                class: 'btn-mini',
+                href: '/admin/news-edit.html?id=' + encodeURIComponent(p.id),
+                text: 'Edit',
+              }),
+              el('button', {
+                class: 'btn-mini btn-mini--danger',
+                type: 'button',
+                text: 'Delete',
+                onclick: async () => {
+                  if (!confirm('Delete "' + (p.title || 'Untitled') + '"?')) return;
+                  const { error: dErr } = await window.sb
+                    .from('news_posts').delete().eq('id', p.id);
+                  if (dErr) { alert('Couldn\u2019t delete: ' + dErr.message); return; }
+                  load();
+                },
+              }),
+            ),
+          );
+        });
+
+        mount(list, ...rows);
+      };
+
+      load();
+    })();
+  </script>
+</body>
+</html>

@@ -97,6 +97,25 @@
   } catch { /* ignore — fall back to the email handle */ }
 
   document.getElementById('navName').textContent = firstName;
+
+  // If this user is an admin, slip an "Admin" link in just before
+  // the Account link in the nav pill.
+  try {
+    const { data: roleRow } = await window.sb
+      .from('profiles').select('role').eq('id', session.user.id).single();
+    if (roleRow?.role === 'admin') {
+      const accountLink = topBar.querySelector('a[href="/account.html"]');
+      const adminPath = path.startsWith('/admin/');
+      const adminLink = e('a', {
+        class: 'nav-link',
+        href: '/admin/index.html',
+        text: 'Admin',
+        ...(adminPath ? { 'aria-current': 'page' } : {}),
+      });
+      if (accountLink) accountLink.parentNode.insertBefore(adminLink, accountLink);
+    }
+  } catch { /* non-fatal */ }
+
   accountBtn.addEventListener('click', async (ev) => {
     ev.preventDefault();
     if (confirm('Sign out of ' + email + '?')) {

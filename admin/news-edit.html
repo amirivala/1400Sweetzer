@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Write · Admin · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Admin · News</span>
+      <h1 class="page-header__title" id="pageTitle">Write a post.</h1>
+      <p class="page-header__sub">
+        Save as a draft, or publish to push it to the news feed (and email
+        residents if you tick the box).
+      </p>
+    </header>
+
+    <form id="form" class="editor-shell rise delay-2" autocomplete="off">
+
+      <div>
+        <input
+          id="title"
+          class="editor-input-title"
+          type="text"
+          required
+          maxlength="200"
+          placeholder="A title for this post"
+        />
+      </div>
+
+      <div class="editor-cover">
+        <label for="cover" style="font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--paper-dim);">
+          Cover image URL (optional)
+        </label>
+        <input id="cover" type="url" placeholder="https://…" />
+      </div>
+
+      <div id="qeditor"></div>
+
+      <label class="toggle">
+        <input id="emailToggle" type="checkbox" checked />
+        <div class="toggle__label">
+          <span class="toggle__title">Email residents on publish</span>
+          <span class="toggle__hint">A short note goes out via Resend to everyone opted in. Doesn't re-send on subsequent edits.</span>
+        </div>
+        <span class="toggle__switch" aria-hidden="true"></span>
+      </label>
+
+      <div class="editor-actions">
+        <a class="btn-mini" href="/admin/news.html">← All posts</a>
+        <span class="spacer"></span>
+        <p id="status" class="account-status" style="margin: 0;"></p>
+        <button type="button" id="deleteBtn" class="btn-mini btn-mini--danger" style="display: none;">Delete</button>
+        <button type="button" id="draftBtn" class="cta liquid-glass-strong">
+          <span>Save draft</span>
+        </button>
+        <button type="submit" id="publishBtn" class="cta cta--solid">
+          <span id="publishBtnLabel">Publish</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M7 17L17 7"/><path d="M7 7h10v10"/>
+          </svg>
+        </button>
+      </div>
+
+    </form>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.js"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/admin-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const titleEl  = document.getElementById('title');
+      const coverEl  = document.getElementById('cover');
+      const emailEl  = document.getElementById('emailToggle');
+      const statusEl = document.getElementById('status');
+      const draftBtn = document.getElementById('draftBtn');
+      const publishBtn = document.getElementById('publishBtn');
+      const publishBtnLabel = document.getElementById('publishBtnLabel');
+      const deleteBtn = document.getElementById('deleteBtn');
+      const pageTitle = document.getElementById('pageTitle');
+
+      const quill = new Quill('#qeditor', {
+        theme: 'snow',
+        placeholder: 'Write the body of your post…',
+        modules: {
+          toolbar: [
+            [{ header: [2, 3, false] }],
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ list: 'ordered' }, { list: 'bullet' }],
+            ['link', 'blockquote'],
+            ['clean'],
+          ],
+        },
+      });
+
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+
+      const id = new URLSearchParams(location.search).get('id');
+      let isPublished = false;
+
+      if (id) {
+        // Editing existing
+        const { data: post, error } = await window.sb
+          .from('news_posts')
+          .select('id, title, body, cover_image_url, published, email_residents')
+          .eq('id', id).single();
+        if (error || !post) {
+          statusEl.textContent = 'Couldn\u2019t load post: ' + (error?.message || 'not found');
+          return;
+        }
+        titleEl.value     = post.title || '';
+        coverEl.value     = post.cover_image_url || '';
+        emailEl.checked   = !!post.email_residents;
+        isPublished       = !!post.published;
+        // Setting Quill from a string of HTML — Quill handles its own
+        // sanitization for the editor view; this is content authored by
+        // an admin previously, sanitized again on render via DOMPurify
+        // on /post.html.
+        quill.clipboard.dangerouslyPasteHTML(post.body || '');
+        publishBtnLabel.textContent = isPublished ? 'Save changes' : 'Publish';
+        pageTitle.textContent = isPublished ? 'Edit post.' : 'Continue draft.';
+        deleteBtn.style.display = '';
+      }
+
+      const collect = (publish) => {
+        const title = titleEl.value.trim();
+        const body  = quill.root.innerHTML.trim();
+        if (!title) { statusEl.textContent = 'Title is required.'; titleEl.focus(); return null; }
+        if (!body || body === '<p><br></p>') {
+          statusEl.textContent = 'Body is required.'; quill.focus(); return null;
+        }
+        const payload = {
+          title,
+          body,
+          cover_image_url: coverEl.value.trim() || null,
+          author_id: session.user.id,
+          published: publish,
+          email_residents: emailEl.checked,
+        };
+        // Stamp published_at on transition to published
+        if (publish && !isPublished) payload.published_at = new Date().toISOString();
+        return payload;
+      };
+
+      const save = async (publish) => {
+        statusEl.textContent = 'Saving…';
+        draftBtn.disabled = publishBtn.disabled = true;
+
+        const payload = collect(publish);
+        if (!payload) { draftBtn.disabled = publishBtn.disabled = false; return; }
+
+        let error;
+        if (id) {
+          ({ error } = await window.sb.from('news_posts').update(payload).eq('id', id));
+        } else {
+          const { data, error: iErr } = await window.sb
+            .from('news_posts').insert(payload).select('id').single();
+          error = iErr;
+          if (data?.id) {
+            // Rewrite URL so subsequent saves edit, not insert.
+            history.replaceState(null, '', '/admin/news-edit.html?id=' + encodeURIComponent(data.id));
+          }
+        }
+
+        draftBtn.disabled = publishBtn.disabled = false;
+
+        if (error) { statusEl.textContent = 'Couldn\u2019t save: ' + error.message; return; }
+
+        if (publish) {
+          statusEl.textContent = 'Published \u2713';
+          isPublished = true;
+          publishBtnLabel.textContent = 'Save changes';
+          deleteBtn.style.display = '';
+          pageTitle.textContent = 'Edit post.';
+        } else {
+          statusEl.textContent = 'Draft saved \u2713';
+          deleteBtn.style.display = '';
+        }
+      };
+
+      draftBtn.addEventListener('click', () => save(false));
+      document.getElementById('form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        save(true);
+      });
+
+      deleteBtn.addEventListener('click', async () => {
+        if (!id) return;
+        if (!confirm('Delete this post for good?')) return;
+        const { error } = await window.sb.from('news_posts').delete().eq('id', id);
+        if (error) { alert('Couldn\u2019t delete: ' + error.message); return; }
+        location.href = '/admin/news.html';
+      });
+    })();
+  </script>
+</body>
+</html>

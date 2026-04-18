@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Providers · Admin · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Admin · Providers</span>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Trusted services.</h1>
+          <p class="page-header__sub">The plumbers, electricians, and locksmiths the building has used and would call again.</p>
+        </div>
+        <button class="cta cta--solid" id="newBtn" type="button"><span>+ New provider</span></button>
+      </div>
+    </header>
+
+    <section id="provList" class="admin-list" aria-live="polite">
+      <div class="empty"><div class="empty__title">Loading…</div></div>
+    </section>
+  </main>
+
+  <dialog id="provDialog" class="modal liquid-glass-strong">
+    <div class="modal__inner">
+      <button class="modal__close" id="closeBtn" type="button" aria-label="Close">×</button>
+      <h2 class="modal__title" id="dialogTitle">New provider</h2>
+
+      <form id="provForm" autocomplete="off">
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="p_name">Name</label>
+          <input id="p_name" type="text" required maxlength="120" placeholder="Acme Plumbing" />
+        </div>
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="p_category">Category</label>
+          <select id="p_category" required>
+            <option>Plumbing</option>
+            <option>Electrical</option>
+            <option>HVAC</option>
+            <option>Locksmith</option>
+            <option>Cleaning</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="p_phone">Phone</label>
+          <input id="p_phone" type="tel" required maxlength="40" placeholder="(310) 555-0140" />
+        </div>
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="p_email">Email (optional)</label>
+          <input id="p_email" type="email" maxlength="200" />
+        </div>
+        <div class="account-row" style="margin-bottom: 0.4rem;">
+          <label for="p_notes">Notes (optional)</label>
+          <textarea id="p_notes" maxlength="2000" placeholder="Hours, quirks, who they like to work with…"></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <p id="formError" class="modal-error" role="alert"></p>
+          <button type="button" class="cta liquid-glass-strong" id="cancelBtn"><span>Cancel</span></button>
+          <button type="submit" class="cta cta--solid" id="submitBtn"><span id="submitLabel">Save</span></button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/admin-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const list      = document.getElementById('provList');
+      const dialog    = document.getElementById('provDialog');
+      const dlgTitle  = document.getElementById('dialogTitle');
+      const newBtn    = document.getElementById('newBtn');
+      const closeBtn  = document.getElementById('closeBtn');
+      const cancelBtn = document.getElementById('cancelBtn');
+      const form      = document.getElementById('provForm');
+      const formError = document.getElementById('formError');
+      const submitLabel = document.getElementById('submitLabel');
+      const fields = {
+        name:     document.getElementById('p_name'),
+        category: document.getElementById('p_category'),
+        phone:    document.getElementById('p_phone'),
+        email:    document.getElementById('p_email'),
+        notes:    document.getElementById('p_notes'),
+      };
+
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+
+      let editingId = null;
+
+      const open = (p) => {
+        editingId = p?.id || null;
+        dlgTitle.textContent = p ? 'Edit provider' : 'New provider';
+        submitLabel.textContent = p ? 'Save' : 'Add provider';
+        formError.textContent = '';
+        fields.name.value     = p?.name || '';
+        fields.category.value = p?.category || 'Plumbing';
+        fields.phone.value    = p?.phone || '';
+        fields.email.value    = p?.email || '';
+        fields.notes.value    = p?.notes || '';
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+      };
+      const close = () => {
+        if (typeof dialog.close === 'function') dialog.close();
+        else dialog.removeAttribute('open');
+      };
+
+      newBtn.addEventListener('click', () => open(null));
+      closeBtn.addEventListener('click', close);
+      cancelBtn.addEventListener('click', close);
+      dialog.addEventListener('click', (e) => { if (e.target === dialog) close(); });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        formError.textContent = '';
+        if (!fields.name.value.trim() || !fields.phone.value.trim()) {
+          formError.textContent = 'Name and phone are required.'; return;
+        }
+        const payload = {
+          name:     fields.name.value.trim(),
+          category: fields.category.value,
+          phone:    fields.phone.value.trim(),
+          email:    fields.email.value.trim() || null,
+          notes:    fields.notes.value.trim() || null,
+        };
+        if (!editingId) payload.created_by = session.user.id;
+
+        const { error } = editingId
+          ? await window.sb.from('providers').update(payload).eq('id', editingId)
+          : await window.sb.from('providers').insert(payload);
+
+        if (error) { formError.textContent = 'Couldn\u2019t save: ' + error.message; return; }
+        close();
+        load();
+      });
+
+      const load = async () => {
+        const { data, error } = await window.sb
+          .from('providers')
+          .select('id, name, category, phone, email, notes')
+          .order('category', { ascending: true })
+          .order('name', { ascending: true });
+
+        if (error) {
+          mount(list,
+            el('div', { class: 'empty' },
+              el('div', { class: 'empty__title', text: 'Trouble loading providers' }),
+              el('p', { class: 'empty__sub', text: error.message }),
+            ));
+          return;
+        }
+        if (!data || data.length === 0) {
+          mount(list,
+            el('div', { class: 'empty' },
+              el('div', { class: 'empty__title', text: 'No providers yet' }),
+              el('p', { class: 'empty__sub', text: 'Tap "New provider" to add one.' }),
+            ));
+          return;
+        }
+
+        const rows = data.map((p) =>
+          el('article', { class: 'card liquid-glass admin-row' },
+            el('div', { class: 'admin-row__main' },
+              el('div', { class: 'admin-row__title', text: p.name }),
+              el('div', { class: 'admin-row__meta' },
+                el('span', { text: p.category }),
+                el('span', { text: '· ' + p.phone }),
+                p.email ? el('span', { text: '· ' + p.email }) : null,
+              ),
+            ),
+            el('div', { class: 'admin-row__actions' },
+              el('button', { class: 'btn-mini', type: 'button', text: 'Edit',
+                onclick: () => open(p) }),
+              el('button', { class: 'btn-mini btn-mini--danger', type: 'button', text: 'Delete',
+                onclick: async () => {
+                  if (!confirm('Delete "' + p.name + '"?')) return;
+                  const { error: dErr } = await window.sb.from('providers').delete().eq('id', p.id);
+                  if (dErr) { alert('Couldn\u2019t delete: ' + dErr.message); return; }
+                  load();
+                } }),
+            ),
+          ));
+
+        mount(list, ...rows);
+      };
+
+      load();
+    })();
+  </script>
+</body>
+</html>

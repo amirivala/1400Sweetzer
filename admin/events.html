@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Events · Admin · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Admin · Events</span>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Building events.</h1>
+          <p class="page-header__sub">Add anything residents should know about — meetings, parties, maintenance windows.</p>
+        </div>
+        <button class="cta cta--solid" id="newBtn" type="button"><span>+ New event</span></button>
+      </div>
+    </header>
+
+    <section id="eventList" class="admin-list" aria-live="polite">
+      <div class="empty">
+        <div class="empty__title">Loading…</div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="eventDialog" class="modal liquid-glass-strong">
+    <div class="modal__inner">
+      <button class="modal__close" id="closeBtn" type="button" aria-label="Close">×</button>
+      <h2 class="modal__title" id="dialogTitle">New event</h2>
+
+      <form id="eventForm" autocomplete="off">
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="e_title">Title</label>
+          <input id="e_title" type="text" required maxlength="120" placeholder="Resident potluck" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; margin-bottom: 0.8rem;">
+          <div class="account-row">
+            <label for="e_start">Starts</label>
+            <input id="e_start" type="datetime-local" required />
+          </div>
+          <div class="account-row">
+            <label for="e_end">Ends (optional)</label>
+            <input id="e_end" type="datetime-local" />
+          </div>
+        </div>
+
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="e_location">Location (optional)</label>
+          <input id="e_location" type="text" maxlength="120" placeholder="Lobby, courtyard, etc." />
+        </div>
+
+        <div class="account-row" style="margin-bottom: 0.4rem;">
+          <label for="e_desc">Description (optional)</label>
+          <textarea id="e_desc" maxlength="2000" placeholder="A few sentences about what to expect."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <p id="formError" class="modal-error" role="alert"></p>
+          <button type="button" class="cta liquid-glass-strong" id="cancelBtn"><span>Cancel</span></button>
+          <button type="submit" class="cta cta--solid" id="submitBtn"><span id="submitLabel">Save</span></button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/admin-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const list      = document.getElementById('eventList');
+      const dialog    = document.getElementById('eventDialog');
+      const dlgTitle  = document.getElementById('dialogTitle');
+      const newBtn    = document.getElementById('newBtn');
+      const closeBtn  = document.getElementById('closeBtn');
+      const cancelBtn = document.getElementById('cancelBtn');
+      const form      = document.getElementById('eventForm');
+      const formError = document.getElementById('formError');
+      const submitLabel = document.getElementById('submitLabel');
+      const fields = {
+        title:    document.getElementById('e_title'),
+        start:    document.getElementById('e_start'),
+        end:      document.getElementById('e_end'),
+        location: document.getElementById('e_location'),
+        desc:     document.getElementById('e_desc'),
+      };
+
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+
+      let editingId = null;
+
+      // Convert ISO timestamp from DB to value usable by datetime-local input.
+      // datetime-local expects "YYYY-MM-DDTHH:MM" in LOCAL time.
+      const toLocalInput = (iso) => {
+        if (!iso) return '';
+        const d = new Date(iso);
+        const pad = (n) => String(n).padStart(2, '0');
+        return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      };
+
+      const open = (e) => {
+        editingId = e?.id || null;
+        dlgTitle.textContent = e ? 'Edit event' : 'New event';
+        submitLabel.textContent = e ? 'Save' : 'Add event';
+        formError.textContent = '';
+        fields.title.value    = e?.title || '';
+        fields.start.value    = toLocalInput(e?.start_at);
+        fields.end.value      = toLocalInput(e?.end_at);
+        fields.location.value = e?.location || '';
+        fields.desc.value     = e?.description || '';
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+      };
+      const close = () => {
+        if (typeof dialog.close === 'function') dialog.close();
+        else dialog.removeAttribute('open');
+      };
+
+      newBtn.addEventListener('click', () => open(null));
+      closeBtn.addEventListener('click', close);
+      cancelBtn.addEventListener('click', close);
+      dialog.addEventListener('click', (e) => { if (e.target === dialog) close(); });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        formError.textContent = '';
+        const start = fields.start.value;
+        if (!fields.title.value.trim() || !start) {
+          formError.textContent = 'Title and start time are required.'; return;
+        }
+        const payload = {
+          title: fields.title.value.trim(),
+          // datetime-local gives a local-time string; new Date(...) interprets
+          // it in the browser's locale, then toISOString stamps it as UTC.
+          start_at: new Date(start).toISOString(),
+          end_at: fields.end.value ? new Date(fields.end.value).toISOString() : null,
+          location: fields.location.value.trim() || null,
+          description: fields.desc.value.trim() || null,
+        };
+        if (!editingId) payload.created_by = session.user.id;
+
+        const { error } = editingId
+          ? await window.sb.from('events').update(payload).eq('id', editingId)
+          : await window.sb.from('events').insert(payload);
+
+        if (error) { formError.textContent = 'Couldn\u2019t save: ' + error.message; return; }
+        close();
+        load();
+      });
+
+      const load = async () => {
+        const { data, error } = await window.sb
+          .from('events')
+          .select('id, title, description, location, start_at, end_at')
+          .order('start_at', { ascending: false });
+
+        if (error) {
+          mount(list,
+            el('div', { class: 'empty' },
+              el('div', { class: 'empty__title', text: 'Trouble loading events' }),
+              el('p', { class: 'empty__sub', text: error.message }),
+            ));
+          return;
+        }
+        if (!data || data.length === 0) {
+          mount(list,
+            el('div', { class: 'empty' },
+              el('div', { class: 'empty__title', text: 'No events yet' }),
+              el('p', { class: 'empty__sub', text: 'Tap "New event" to add one.' }),
+            ));
+          return;
+        }
+
+        const rows = data.map((e) => {
+          const past = new Date(e.start_at).getTime() < Date.now() - 6*3600*1000;
+          const when = fmt.longDate(e.start_at) + ' · ' + fmt.time(e.start_at)
+                     + (e.end_at ? '–' + fmt.time(e.end_at) : '');
+          const meta = el('div', { class: 'admin-row__meta' },
+            el('span', { text: when }),
+            e.location ? el('span', { text: '· ' + e.location }) : null,
+            past ? el('span', { class: 'admin-status-pill admin-status-pill--draft', text: 'Past' }) : null,
+          );
+          return el('article', { class: 'card liquid-glass admin-row' },
+            el('div', { class: 'admin-row__main' },
+              el('div', { class: 'admin-row__title', text: e.title }),
+              meta,
+            ),
+            el('div', { class: 'admin-row__actions' },
+              el('button', { class: 'btn-mini', type: 'button', text: 'Edit',
+                onclick: () => open(e) }),
+              el('button', { class: 'btn-mini btn-mini--danger', type: 'button', text: 'Delete',
+                onclick: async () => {
+                  if (!confirm('Delete "' + e.title + '"?')) return;
+                  const { error: dErr } = await window.sb.from('events').delete().eq('id', e.id);
+                  if (dErr) { alert('Couldn\u2019t delete: ' + dErr.message); return; }
+                  load();
+                } }),
+            ),
+          );
+        });
+
+        mount(list, ...rows);
+      };
+
+      load();
+    })();
+  </script>
+</body>
+</html>

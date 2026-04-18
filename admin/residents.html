@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Residents · Admin · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Admin · Residents</span>
+      <h1 class="page-header__title">Who's in the building.</h1>
+      <p class="page-header__sub">
+        Approve pending signups, promote board members, remove old
+        residents. New accounts are created on signup; you only manage
+        them from here.
+      </p>
+    </header>
+
+    <section id="resList" class="admin-list" aria-live="polite">
+      <div class="empty"><div class="empty__title">Loading…</div></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/admin-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const list = document.getElementById('resList');
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+      const meId = session.user.id;
+
+      const updateStatus = async (id, status) => {
+        const { error } = await window.sb
+          .from('profiles').update({ status }).eq('id', id);
+        if (error) alert('Couldn\u2019t update: ' + error.message);
+      };
+      const updateRole = async (id, role) => {
+        const { error } = await window.sb
+          .from('profiles').update({ role }).eq('id', id);
+        if (error) alert('Couldn\u2019t update: ' + error.message);
+      };
+
+      const load = async () => {
+        const { data, error } = await window.sb
+          .from('profiles')
+          .select('id, full_name, unit_number, phone, role, status, created_at')
+          .order('status', { ascending: true })
+          .order('unit_number', { ascending: true });
+
+        if (error) {
+          mount(list,
+            el('div', { class: 'empty' },
+              el('div', { class: 'empty__title', text: 'Trouble loading residents' }),
+              el('p', { class: 'empty__sub', text: error.message }),
+            ));
+          return;
+        }
+        if (!data || data.length === 0) {
+          mount(list,
+            el('div', { class: 'empty' },
+              el('div', { class: 'empty__title', text: 'No residents yet' }),
+              el('p', { class: 'empty__sub', text: 'Once people sign up, they\u2019ll appear here.' }),
+            ));
+          return;
+        }
+
+        // Sort: pending first, then approved, then removed.
+        const order = { pending: 0, approved: 1, removed: 2 };
+        data.sort((a, b) => (order[a.status] - order[b.status]));
+
+        const rows = data.map((r) => {
+          const isMe = r.id === meId;
+          const statusPill = el('span', {
+            class: 'admin-status-pill admin-status-pill--' + r.status,
+            text: r.status,
+          });
+          const rolePill = r.role === 'admin'
+            ? el('span', { class: 'admin-status-pill admin-status-pill--admin', text: 'admin' })
+            : null;
+
+          const actions = [];
+          if (r.status === 'pending') {
+            actions.push(el('button', {
+              class: 'btn-mini', type: 'button', text: 'Approve',
+              onclick: async () => {
+                await updateStatus(r.id, 'approved');
+                load();
+              },
+            }));
+            actions.push(el('button', {
+              class: 'btn-mini btn-mini--danger', type: 'button', text: 'Reject',
+              onclick: async () => {
+                if (!confirm('Reject ' + (r.full_name || 'this signup') + '?')) return;
+                await updateStatus(r.id, 'removed');
+                load();
+              },
+            }));
+          } else if (r.status === 'approved') {
+            if (!isMe) {
+              if (r.role === 'admin') {
+                actions.push(el('button', {
+                  class: 'btn-mini', type: 'button', text: 'Demote',
+                  onclick: async () => {
+                    if (!confirm('Remove admin from ' + (r.full_name || 'this user') + '?')) return;
+                    await updateRole(r.id, 'resident');
+                    load();
+                  },
+                }));
+              } else {
+                actions.push(el('button', {
+                  class: 'btn-mini', type: 'button', text: 'Make admin',
+                  onclick: async () => {
+                    if (!confirm('Make ' + (r.full_name || 'this user') + ' an admin?')) return;
+                    await updateRole(r.id, 'admin');
+                    load();
+                  },
+                }));
+              }
+              actions.push(el('button', {
+                class: 'btn-mini btn-mini--danger', type: 'button', text: 'Remove',
+                onclick: async () => {
+                  if (!confirm('Remove ' + (r.full_name || 'this resident') + ' from the building? They\u2019ll lose access.')) return;
+                  await updateStatus(r.id, 'removed');
+                  load();
+                },
+              }));
+            } else {
+              actions.push(el('span', { class: 'admin-row__meta', text: 'You' }));
+            }
+          } else if (r.status === 'removed') {
+            actions.push(el('button', {
+              class: 'btn-mini', type: 'button', text: 'Restore',
+              onclick: async () => {
+                await updateStatus(r.id, 'approved');
+                load();
+              },
+            }));
+          }
+
+          return el('article', { class: 'card liquid-glass admin-row' },
+            el('div', { class: 'admin-row__main' },
+              el('div', { class: 'admin-row__title', text: (r.full_name || 'Unnamed') + (r.unit_number ? ' · Unit ' + r.unit_number : '') }),
+              el('div', { class: 'admin-row__meta' },
+                statusPill,
+                rolePill,
+                r.phone ? el('span', { text: r.phone }) : null,
+              ),
+            ),
+            el('div', { class: 'admin-row__actions' }, ...actions),
+          );
+        });
+
+        mount(list, ...rows);
+      };
+
+      load();
+    })();
+  </script>
+</body>
+</html>

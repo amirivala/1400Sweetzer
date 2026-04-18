@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Admin · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Admin</span>
+      <h1 class="page-header__title">Run the building.</h1>
+      <p class="page-header__sub">
+        Post news, manage events and providers, look after residents.
+        Only board members see this page.
+      </p>
+    </header>
+
+    <section class="admin-tiles" id="tiles" aria-live="polite"></section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/admin-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const tiles = document.getElementById('tiles');
+
+      // Pull a few quick counts to surface as headline numbers.
+      const counts = async (table, filters = {}) => {
+        let q = window.sb.from(table).select('id', { count: 'exact', head: true });
+        for (const [k, v] of Object.entries(filters)) q = q.eq(k, v);
+        const { count, error } = await q;
+        return error ? null : count;
+      };
+
+      const [
+        residentsCount, pendingCount, postsCount, draftsCount,
+        eventsCount, providersCount, bulletinsCount,
+      ] = await Promise.all([
+        counts('profiles', { status: 'approved' }),
+        counts('profiles', { status: 'pending' }),
+        counts('news_posts', { published: true }),
+        counts('news_posts', { published: false }),
+        counts('events'),
+        counts('providers'),
+        counts('bulletins'),
+      ]);
+
+      const tile = (num, label, hint, href) =>
+        el('a', { class: 'card admin-tile liquid-glass', href },
+          el('div', { class: 'admin-tile__num', text: String(num ?? '—') }),
+          el('div', { class: 'admin-tile__label', text: label }),
+          el('div', { class: 'admin-tile__hint',  text: hint }),
+        );
+
+      mount(tiles,
+        tile(postsCount, 'News posts',
+             'Write a notice. Optionally email residents.',
+             '/admin/news.html'),
+        tile(eventsCount, 'Events',
+             'Add, edit, or remove building events.',
+             '/admin/events.html'),
+        tile(providersCount, 'Providers',
+             'Plumbers, electricians, locksmiths.',
+             '/admin/providers.html'),
+        tile(residentsCount, 'Approved residents',
+             pendingCount ? (pendingCount + ' pending approval') : 'Manage residents and admins.',
+             '/admin/residents.html'),
+        tile(bulletinsCount, 'Bulletin posts',
+             'Resident-posted board (read-only here).',
+             '/bulletin.html'),
+        tile(draftsCount, 'News drafts',
+             'Unpublished posts saved for later.',
+             '/admin/news.html'),
+      );
+    })();
+  </script>
+</body>
+</html>
