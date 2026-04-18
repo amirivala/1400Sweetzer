@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Bulletin · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Bulletin</span>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">Notes from neighbors.</h1>
+          <p class="page-header__sub">
+            Anything you'd post on the lobby corkboard — items for sale,
+            things you're looking for, recommendations, or just a heads-up.
+          </p>
+        </div>
+        <button class="cta cta--solid" id="newBtn" type="button">
+          <span>+ New post</span>
+        </button>
+      </div>
+    </header>
+
+    <div id="filterRow" class="chip-row" aria-label="Filter posts by category"></div>
+
+    <section id="bulletinList" aria-live="polite">
+      <div class="empty">
+        <div class="empty__title">Loading…</div>
+      </div>
+    </section>
+  </main>
+
+  <!-- New post modal -->
+  <dialog id="newDialog" class="modal liquid-glass-strong">
+    <div class="modal__inner">
+      <button class="modal__close" id="closeBtn" type="button" aria-label="Close">×</button>
+      <h2 class="modal__title">New post</h2>
+      <p class="modal__sub">It'll show up on the bulletin for everyone signed in.</p>
+
+      <form id="newForm" autocomplete="off">
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="b_title">Title</label>
+          <input
+            id="b_title"
+            type="text"
+            required
+            maxlength="120"
+            placeholder="What's it about?"
+            style="padding: 0.85rem 1rem; border-radius: var(--radius-pill); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15); color: var(--paper); font-size: 1rem; outline: 0; width: 100%;" />
+        </div>
+
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="b_category">Category</label>
+          <select id="b_category" required>
+            <option value="Info">Info</option>
+            <option value="For sale">For sale</option>
+            <option value="Wanted">Wanted</option>
+            <option value="Free">Free</option>
+            <option value="Lost &amp; found">Lost &amp; found</option>
+            <option value="Recommendation">Recommendation</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <div class="account-row" style="margin-bottom: 0.4rem;">
+          <label for="b_body">Details</label>
+          <textarea id="b_body" required maxlength="2000" placeholder="A few sentences. Phone or email if you want a reply."></textarea>
+        </div>
+
+        <div class="modal-actions">
+          <p id="formError" class="modal-error" role="alert"></p>
+          <button type="button" class="cta liquid-glass-strong" id="cancelBtn">
+            <span>Cancel</span>
+          </button>
+          <button type="submit" class="cta cta--solid" id="submitBtn">
+            <span>Post</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/auth-guard.js"></script>
+  <script src="/assets/page-shell.js"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const list      = document.getElementById('bulletinList');
+      const filterRow = document.getElementById('filterRow');
+      const dialog    = document.getElementById('newDialog');
+      const newBtn    = document.getElementById('newBtn');
+      const closeBtn  = document.getElementById('closeBtn');
+      const cancelBtn = document.getElementById('cancelBtn');
+      const form      = document.getElementById('newForm');
+      const submitBtn = document.getElementById('submitBtn');
+      const formError = document.getElementById('formError');
+
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+      const meId = session.user.id;
+
+      // Pull my role so we can show admin-delete on others' posts.
+      let myRole = 'resident';
+      try {
+        const { data: me } = await window.sb
+          .from('profiles').select('role').eq('id', meId).single();
+        if (me?.role) myRole = me.role;
+      } catch {}
+
+      const CATS = ['All', 'For sale', 'Wanted', 'Free', 'Lost & found', 'Recommendation', 'Info', 'Other'];
+      const catClass = {
+        'For sale':       'bulletin-card__cat--for-sale',
+        'Wanted':         'bulletin-card__cat--wanted',
+        'Free':           'bulletin-card__cat--free',
+        'Lost & found':   'bulletin-card__cat--lost',
+        'Recommendation': 'bulletin-card__cat--rec',
+        'Info':           'bulletin-card__cat--info',
+        'Other':          'bulletin-card__cat--other',
+      };
+
+      let active = 'All';
+      let posts  = [];
+
+      const load = async () => {
+        const { data, error } = await window.sb
+          .from('bulletins')
+          .select(`
+            id, title, body, category, created_at, author_id,
+            author:profiles!author_id ( full_name, unit_number )
+          `)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          mount(list,
+            el('div', { class: 'empty' },
+              el('div', { class: 'empty__title', text: 'Trouble loading bulletins' }),
+              el('p', { class: 'empty__sub', text: error.message }),
+            ));
+          return;
+        }
+        posts = data || [];
+        render();
+      };
+
+      const render = () => {
+        const filtered = active === 'All'
+          ? posts
+          : posts.filter((p) => p.category === active);
+
+        if (filtered.length === 0) {
+          mount(list,
+            el('div', { class: 'empty' },
+              el('div', { class: 'empty__title',
+                text: active === 'All' ? 'Nothing posted yet' : 'No ' + active + ' posts' }),
+              el('p', { class: 'empty__sub',
+                text: active === 'All' ? 'Be the first — tap "New post" up top.' : 'Try a different category.' }),
+            ));
+          return;
+        }
+
+        list.className = 'bulletin-grid';
+
+        const cards = filtered.map((p, idx) => {
+          const cls = catClass[p.category] || 'bulletin-card__cat--other';
+          const author = p.author?.full_name || 'A neighbor';
+          const unit   = p.author?.unit_number ? ' · Unit ' + p.author.unit_number : '';
+          const canDelete = p.author_id === meId || myRole === 'admin';
+
+          return el('article', {
+              class: 'card bulletin-card liquid-glass rise',
+              style: { animationDelay: `${0.04 + idx * 0.04}s` },
+            },
+            el('div', { class: 'bulletin-card__head' },
+              el('span', { class: 'bulletin-card__cat ' + cls, text: p.category }),
+              canDelete
+                ? el('button', {
+                    class: 'bulletin-card__delete',
+                    type: 'button',
+                    'aria-label': 'Delete this post',
+                    title: 'Delete',
+                    text: '×',
+                    onclick: async () => {
+                      if (!confirm('Delete this post?')) return;
+                      const { error } = await window.sb
+                        .from('bulletins').delete().eq('id', p.id);
+                      if (error) { alert('Couldn\u2019t delete: ' + error.message); return; }
+                      load();
+                    },
+                  })
+                : null,
+            ),
+            el('h2', { class: 'bulletin-card__title', text: p.title }),
+            el('p',  { class: 'bulletin-card__body',  text: p.body }),
+            el('div', { class: 'bulletin-card__byline' },
+              el('span', { text: author + unit }),
+              el('span', { 'aria-hidden': 'true', text: '·' }),
+              el('span', { text: fmt.relTime(p.created_at) }),
+            ),
+          );
+        });
+
+        mount(list, ...cards);
+      };
+
+      const renderChips = () => {
+        const chips = CATS.map((c) =>
+          el('button', {
+            type: 'button',
+            class: 'chip',
+            'aria-pressed': c === active ? 'true' : 'false',
+            text: c,
+            onclick: () => { active = c; renderChips(); render(); },
+          }));
+        mount(filterRow, ...chips);
+      };
+
+      // Modal wiring
+      const openDialog = () => {
+        formError.textContent = '';
+        form.reset();
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+      };
+      const closeDialog = () => {
+        if (typeof dialog.close === 'function') dialog.close();
+        else dialog.removeAttribute('open');
+      };
+
+      newBtn.addEventListener('click', openDialog);
+      closeBtn.addEventListener('click', closeDialog);
+      cancelBtn.addEventListener('click', closeDialog);
+      dialog.addEventListener('click', (e) => {
+        // close when clicking the backdrop (target === dialog itself)
+        if (e.target === dialog) closeDialog();
+      });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        formError.textContent = '';
+        submitBtn.disabled = true;
+
+        const insert = {
+          title: document.getElementById('b_title').value.trim(),
+          category: document.getElementById('b_category').value,
+          body: document.getElementById('b_body').value.trim(),
+          author_id: meId,
+        };
+        if (!insert.title || !insert.body) {
+          formError.textContent = 'Title and details are both required.';
+          submitBtn.disabled = false;
+          return;
+        }
+
+        const { error } = await window.sb.from('bulletins').insert(insert);
+        submitBtn.disabled = false;
+        if (error) { formError.textContent = 'Couldn\u2019t post: ' + error.message; return; }
+
+        closeDialog();
+        load();
+      });
+
+      renderChips();
+      load();
+    })();
+  </script>
+</body>
+</html>

@@ -77,6 +77,17 @@ window.fmt = {
   }),
   monShort: (iso) => new Date(iso).toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
   day: (iso) => String(new Date(iso).getDate()),
+  // "5m ago", "2h ago", "yesterday", "Apr 12" — for bulletins, comments, etc.
+  relTime: (iso) => {
+    const d = new Date(iso);
+    const diff = (Date.now() - d.getTime()) / 1000;
+    if (diff < 60)        return 'just now';
+    if (diff < 3600)      return Math.floor(diff / 60) + 'm ago';
+    if (diff < 86400)     return Math.floor(diff / 3600) + 'h ago';
+    if (diff < 86400 * 2) return 'yesterday';
+    if (diff < 86400 * 7) return Math.floor(diff / 86400) + 'd ago';
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  },
   // Strip HTML to plain text for previews. Uses DOMParser so script tags
   // never run; we extract textContent only.
   stripHtml: (html) => {

@@ -12,6 +12,7 @@
   const navItems = [
     { href: '/home.html',      label: 'Home' },
     { href: '/news.html',      label: 'News' },
+    { href: '/bulletin.html',  label: 'Bulletin' },
     { href: '/calendar.html',  label: 'Calendar' },
     { href: '/directory.html', label: 'Directory' },
     { href: '/providers.html', label: 'Providers' },
