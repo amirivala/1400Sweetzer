@@ -3,179 +3,108 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f5f0e6" />
-  <title>1400 Sweetzer · The Resident Portal</title>
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Sunset Penthouse · Resident Portal</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
   <link rel="stylesheet" href="/assets/styles.css" />
+
+  <link rel="preload" as="image" href="/assets/building.jpg" fetchpriority="high" />
 </head>
 <body>
 
-  <header class="navbar">
-    <div class="navbar__inner">
-      <a href="/home.html" class="plaque plaque--inline" aria-label="1400 Sweetzer home">
-        <span class="plaque__num">1400</span>
-        <span class="plaque__rule"></span>
-        <span class="plaque__name">Sweetzer</span>
+  <main class="stage">
+
+    <!-- Full-bleed photo background, with warm overlay + grain -->
+    <div class="stage__media" aria-hidden="true">
+      <img
+        src="/assets/building.jpg"
+        alt=""
+        onerror="this.style.display='none'"
+      />
+    </div>
+
+    <!-- Floating top bar: brand left, glass nav pill right -->
+    <header class="top-bar fade delay-1">
+      <a class="top-bar__brand" href="/home.html" aria-label="Sunset Penthouse home">
+        <span class="mark liquid-glass-strong">
+          <span aria-hidden="true">SP</span>
+        </span>
+        <span class="top-bar__brand-name">Sunset Penthouse</span>
       </a>
 
-      <nav>
-        <ul class="nav-links">
-          <li><a class="nav-link" aria-current="page" href="/home.html">News</a></li>
-          <li><a class="nav-link" href="/calendar.html">Calendar</a></li>
-          <li><a class="nav-link" href="/directory.html">Directory</a></li>
-          <li><a class="nav-link" href="/providers.html">Providers</a></li>
-        </ul>
+      <nav aria-label="Primary">
+        <div class="nav-pill liquid-glass">
+          <a class="nav-link nav-link--keep" aria-current="page" href="/home.html">Home</a>
+          <a class="nav-link" href="/news.html">News</a>
+          <a class="nav-link" href="/calendar.html">Calendar</a>
+          <a class="nav-link" href="/directory.html">Directory</a>
+          <a class="nav-link" href="/providers.html">Providers</a>
+          <button class="nav-cta" id="navAccount" type="button" aria-label="Account menu">
+            <span id="navName">Account</span>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7 17L17 7"/><path d="M7 7h10v10"/>
+            </svg>
+          </button>
+        </div>
       </nav>
+    </header>
 
-      <button class="nav-account" id="navAccount" aria-haspopup="menu">
-        <span class="nav-account__avatar" id="navAvatar">A</span>
-        <span id="navName">Account</span>
-      </button>
-    </div>
-  </header>
+    <!-- Centered hero text -->
+    <section class="hero" aria-label="Latest from your building">
+      <div class="hero__inner">
 
-  <main class="container">
-    <section class="home-hero rise rise-1" aria-label="Greeting">
-      <p class="home-hero__greeting"><span id="greeting">Welcome back</span>,</p>
-      <h1 class="home-hero__title">
-        Here's what's <em>happening</em><br />on Sweetzer.
-      </h1>
-      <p class="home-hero__meta">
-        <span id="todayLine">Friday · April 18</span>
-        <span>·</span>
-        <span>4 new this week</span>
-      </p>
-    </section>
+        <a class="update-pill liquid-glass blur-in delay-2" href="/news.html">
+          <span class="update-pill__chip"><span aria-hidden="true"></span>Latest</span>
+          <span class="update-pill__text">Lobby renovation begins Monday — what to expect</span>
+        </a>
 
-    <section class="feed" aria-label="News feed">
-      <div class="feed__main">
+        <h1 class="hero-display blur-in delay-3">
+          <span class="br" id="heroLine1">Welcome home,</span>
+          <span class="br" id="heroLine2">to Sunset Penthouse.</span>
+        </h1>
 
-        <article class="post post--featured rise rise-2">
-          <header class="post__meta">
-            <span class="tag">Maintenance</span>
-            <time class="post__date" datetime="2026-04-17">APR 17 · 2 DAY READ</time>
-          </header>
-          <h2 class="post__title headline">Lobby renovation begins Monday — what to expect this week</h2>
-          <p class="post__lede">
-            Crews start at the entry doors on the morning of the 21st. Expect mild noise from
-            8&nbsp;AM&ndash;3&nbsp;PM, a temporary side entrance off the parking ramp, and dust
-            sheeting in the mail area through Friday. Full timeline and contractor contacts inside.
-          </p>
-          <a class="btn btn--primary" href="#">
-            Read the full notice
-            <span class="btn__arrow" aria-hidden="true">→</span>
+        <p class="hero-sub blur-in delay-4">
+          Your building's news, neighbors, calendar, and trusted contacts —
+          gathered in one quiet place. Mid-century, west-facing, on a hill
+          on Sweetzer Avenue.
+        </p>
+
+        <div class="hero-cta-row blur-in delay-5">
+          <a class="cta liquid-glass-strong" href="/news.html">
+            <span>Read the news</span>
+            <svg class="cta-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M7 17L17 7"/><path d="M7 7h10v10"/>
+            </svg>
           </a>
-          <div class="post__byline">
-            <span>Sarah Cohen</span>
-            <span class="post__byline-rule"></span>
-            <span>Board · Building Operations</span>
-          </div>
-        </article>
-
-        <article class="post rise rise-3">
-          <header class="post__meta">
-            <span class="tag tag--sage">Community</span>
-            <time class="post__date" datetime="2026-04-15">APR 15 · 1 MIN</time>
-          </header>
-          <h2 class="post__title headline">Welcome to our newest residents in 4B and 2A</h2>
-          <p class="post__lede">
-            Jane and Tom moved in last weekend. Say hi if you see them in the lobby — they
-            mentioned they brought a very large fern.
-          </p>
-          <div class="post__byline">
-            <span>Sarah Cohen</span>
-            <span class="post__byline-rule"></span>
-            <span>Board</span>
-          </div>
-        </article>
-
-        <article class="post rise rise-4">
-          <header class="post__meta">
-            <span class="tag tag--amber">Pool</span>
-            <time class="post__date" datetime="2026-04-10">APR 10 · 1 MIN</time>
-          </header>
-          <h2 class="post__title headline">Pool reopens for the season on May 1</h2>
-          <p class="post__lede">
-            Resurfacing wrapped up last week. Hours run 7 AM&ndash;10 PM through October.
-            Towels are stocked at the cabana — please don't take more than two at a time.
-          </p>
-          <div class="post__byline">
-            <span>Mike Alvarez</span>
-            <span class="post__byline-rule"></span>
-            <span>Building Manager</span>
-          </div>
-        </article>
-
-        <article class="post rise rise-5">
-          <header class="post__meta">
-            <span class="tag tag--ink">Board notes</span>
-            <time class="post__date" datetime="2026-04-04">APR 4 · 4 MIN</time>
-          </header>
-          <h2 class="post__title headline">Q1 board meeting recap &amp; budget update</h2>
-          <p class="post__lede">
-            We approved the lobby renovation, set aside reserves for the elevator
-            modernization study, and welcomed two new owners. Full minutes attached.
-          </p>
-          <div class="post__byline">
-            <span>Sarah Cohen</span>
-            <span class="post__byline-rule"></span>
-            <span>Board · Secretary</span>
-          </div>
-        </article>
+          <a class="cta" href="/calendar.html">
+            <svg class="cta-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+              <path d="M5 4 L19 12 L5 20 Z" />
+            </svg>
+            <span>View the calendar</span>
+          </a>
+        </div>
 
       </div>
-
-      <aside class="feed__aside">
-
-        <div class="event-card rise rise-3">
-          <p class="event-card__label">Up next</p>
-          <div class="event-card__row">
-            <div class="date-block" aria-label="April 25">
-              <span class="date-block__month">Apr</span>
-              <span class="date-block__day">25</span>
-            </div>
-            <div>
-              <h3 class="event-card__title">Resident potluck</h3>
-              <p class="event-card__where">Saturday · 6:00 PM<br />Lobby &amp; courtyard</p>
-              <a class="event-card__cta" href="/calendar.html">
-                See full calendar <span aria-hidden="true">→</span>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        <div class="contact-strip rise rise-4">
-          <span class="contact-strip__label">Building manager</span>
-          <span class="contact-strip__name">Mike Alvarez</span>
-          <a class="contact-strip__phone" href="tel:+13105550199">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.72 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.35 1.85.59 2.81.72A2 2 0 0 1 22 16.92z"/>
-            </svg>
-            (310) 555-0199
-          </a>
-        </div>
-
-      </aside>
     </section>
+
+    <!-- Bottom: address strip like an editorial caption -->
+    <footer class="address-strip fade delay-6">
+      <div class="address-strip__group">
+        <span>1400 N Sweetzer Ave</span>
+        <span class="address-strip__dot" aria-hidden="true"></span>
+        <span>West Hollywood, CA</span>
+      </div>
+      <div class="address-strip__group">
+        <span id="todayLine">Today</span>
+        <span class="address-strip__dot" aria-hidden="true"></span>
+        <span>Resident Portal</span>
+      </div>
+    </footer>
+
   </main>
-
-  <footer class="foot">
-    <div class="foot__inner">
-      <span>1400 N Sweetzer Ave · West Hollywood, CA 90069</span>
-      <span>The Resident Portal</span>
-    </div>
-  </footer>
-
-  <nav class="bottom-nav" aria-label="Mobile navigation">
-    <a href="/home.html" aria-current="page">News</a>
-    <a href="/calendar.html">Cal</a>
-    <a href="/directory.html">Dir</a>
-    <a href="/providers.html">Pros</a>
-    <a href="#" id="bottomAccount">Acct</a>
-  </nav>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/env.js"></script>
@@ -187,42 +116,36 @@
       if (!session) return;
 
       const email = session.user.email || '';
-      const initial = (email[0] || 'A').toUpperCase();
 
-      // Try to fetch profile name; fall back to email handle.
-      let displayName = email.split('@')[0];
+      let firstName = email.split('@')[0];
       try {
         const { data: profile } = await window.sb
           .from('profiles')
           .select('full_name')
           .eq('id', session.user.id)
           .single();
-        if (profile?.full_name) displayName = profile.full_name.split(' ')[0];
+        if (profile?.full_name) firstName = profile.full_name.split(' ')[0];
       } catch {}
 
-      document.getElementById('navAvatar').textContent = initial;
-      document.getElementById('navName').textContent = displayName;
-      document.getElementById('greeting').textContent = `Welcome back, ${displayName}`;
+      // Personalize the headline + nav label
+      document.getElementById('heroLine1').textContent = `Welcome home, ${firstName}.`;
+      document.getElementById('navName').textContent = firstName;
 
-      // Format today's date "Friday · April 18"
+      // Today's date pill
       const d = new Date();
       const day  = d.toLocaleDateString('en-US', { weekday: 'long' });
       const mon  = d.toLocaleDateString('en-US', { month: 'long' });
       const date = d.getDate();
-      document.getElementById('todayLine').textContent = `${day} · ${mon} ${date}`;
+      document.getElementById('todayLine').textContent = `${day}, ${mon} ${date}`;
 
-      // Click avatar → simple sign-out menu via prompt
-      const accountBtns = [
-        document.getElementById('navAccount'),
-        document.getElementById('bottomAccount'),
-      ].filter(Boolean);
-      accountBtns.forEach((btn) => btn.addEventListener('click', async (e) => {
+      // Click the account pill → confirm + sign out
+      document.getElementById('navAccount').addEventListener('click', async (e) => {
         e.preventDefault();
         if (confirm(`Sign out of ${email}?`)) {
           await window.sb.auth.signOut();
           location.href = '/';
         }
-      }));
+      });
     })();
   </script>
 </body>

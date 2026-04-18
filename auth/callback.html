@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#f5f0e6" />
-  <title>Signing you in…</title>
+  <meta name="theme-color" content="#0c0a09" />
+  <title>One moment · Sunset Penthouse</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -13,14 +13,13 @@
 </head>
 <body class="auth-shell">
 
-  <div class="auth-card fade">
-    <div class="plaque">
-      <span class="plaque__num">1400</span>
-      <span class="plaque__rule"></span>
-      <span class="plaque__name">Sweetzer</span>
+  <div class="auth-card liquid-glass-strong fade">
+    <div class="auth-brand">
+      <span class="mark liquid-glass-strong"><span aria-hidden="true">SP</span></span>
+      <span class="auth-brand-name">Sunset Penthouse</span>
     </div>
-    <h1 class="auth-title">One moment…</h1>
-    <p id="status" class="auth-sub" role="status">Verifying your magic link.</p>
+    <h1 class="auth-title">One moment.</h1>
+    <p id="status" class="auth-sub" role="status">Verifying your magic link…</p>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -29,8 +28,6 @@
   <script>
     (async () => {
       const status = document.getElementById('status');
-
-      // Give supabase-js a tick to consume the URL hash.
       await new Promise((r) => setTimeout(r, 50));
 
       const { data: { session } } = await window.sb.auth.getSession();
