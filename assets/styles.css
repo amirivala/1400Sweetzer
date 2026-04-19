@@ -212,13 +212,34 @@ button { background: none; border: 0; cursor: pointer; }
   background:
     radial-gradient(circle at 70% 35%, #b7754d 0%, #5a3322 45%, #1a0e08 100%);
 }
-.stage__media img {
+
+/* The poster photo: paints first, stays as fallback. */
+.stage__photo,
+.stage__video {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
   object-position: center 40%;
-  /* Warm-tone the B&W night photo so it lives in the same world */
+  /* Warm-tone the B&W night source so photo + video live in the
+     same color world even though the video may be color. */
   filter: contrast(1.05) brightness(0.95) sepia(0.18) hue-rotate(-8deg) saturate(1.05);
+}
+
+/* The video sits ON TOP of the photo, hidden until it can play. */
+.stage__video {
+  opacity: 0;
+  transition: opacity 1.2s ease-out;
+  pointer-events: none;
+}
+.stage__video.is-ready { opacity: 1; }
+
+/* Respect reduced-motion: don't fade in the video at all (let the
+   photo stand). The video element will still autoplay silently in
+   the background per browser defaults, but it stays invisible. */
+@media (prefers-reduced-motion: reduce) {
+  .stage__video.is-ready { opacity: 0 !important; }
 }
 /* Dark gradient overlays — top bar legibility + bottom CTA anchor */
 .stage__media::before {

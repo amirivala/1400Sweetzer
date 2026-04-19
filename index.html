@@ -19,8 +19,32 @@
   <main class="stage">
 
     <div class="stage__media" aria-hidden="true">
-      <img src="/assets/building.jpg" alt="" onerror="this.style.display='none'" />
+      <img class="stage__photo"
+           src="/assets/building.jpg"
+           alt=""
+           onerror="this.style.display='none'" />
+      <video id="bgVideo"
+             class="stage__video"
+             src="/assets/building.mp4"
+             poster="/assets/building.jpg"
+             preload="auto"
+             autoplay
+             muted
+             loop
+             playsinline
+             disablepictureinpicture
+             aria-hidden="true"></video>
     </div>
+    <script>
+      (() => {
+        const v = document.getElementById('bgVideo');
+        if (!v) return;
+        const reveal = () => v.classList.add('is-ready');
+        if (v.readyState >= 3) { reveal(); return; }
+        v.addEventListener('canplay', reveal, { once: true });
+        v.addEventListener('loadeddata', reveal, { once: true });
+      })();
+    </script>
 
     <header class="top-bar fade delay-1">
       <a class="top-bar__brand" href="/" aria-label="Sunset Penthouse home">

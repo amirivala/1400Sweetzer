@@ -17,13 +17,29 @@
 
   <main class="stage">
 
-    <!-- Full-bleed photo background, with warm overlay + grain -->
+    <!--
+      Full-bleed background. The .jpg paints immediately (preloaded
+      and fetched at high priority). The <video> lives on top with
+      opacity 0; once it has enough data to play smoothly we add
+      .is-ready and it fades in over the photo. If the video fails
+      to load (slow connection, unsupported codec) the photo stays.
+    -->
     <div class="stage__media" aria-hidden="true">
-      <img
-        src="/assets/building.jpg"
-        alt=""
-        onerror="this.style.display='none'"
-      />
+      <img class="stage__photo"
+           src="/assets/building.jpg"
+           alt=""
+           onerror="this.style.display='none'" />
+      <video id="bgVideo"
+             class="stage__video"
+             src="/assets/building.mp4"
+             poster="/assets/building.jpg"
+             preload="auto"
+             autoplay
+             muted
+             loop
+             playsinline
+             disablepictureinpicture
+             aria-hidden="true"></video>
     </div>
 
     <!-- Floating top bar: brand left, glass nav pill right -->
@@ -106,6 +122,23 @@
     </footer>
 
   </main>
+
+  <script>
+    // Fade the background video in only once it can play smoothly,
+    // so the building photo holds the screen until the video is ready.
+    // Runs synchronously, before any auth code, so the visual pop happens
+    // as soon as the bytes arrive — no waiting on a Supabase round-trip.
+    (() => {
+      const video = document.getElementById('bgVideo');
+      if (!video) return;
+      const reveal = () => video.classList.add('is-ready');
+      if (video.readyState >= 3) { reveal(); return; }
+      video.addEventListener('canplay', reveal, { once: true });
+      // Safety net: if canplay never fires (slow connection, blocked
+      // autoplay), still try to reveal once the loadeddata event lands.
+      video.addEventListener('loadeddata', reveal, { once: true });
+    })();
+  </script>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/env.js"></script>
