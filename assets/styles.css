@@ -436,12 +436,15 @@ button { background: none; border: 0; cursor: pointer; }
     0 10px 36px rgba(0, 0, 0, 0.30);
   margin-inline: auto;
 
+  /* Two-line stacked editorial hero: the small italic "Welcome"
+     prelude sits above the much larger italic main line, both
+     centered. */
   display: inline-flex;
-  align-items: baseline;
-  flex-wrap: wrap;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
-  gap: 0.35em;
-  text-align: left;
+  gap: 0.05em;
+  text-align: center;
   max-width: 100%;
 }
 
@@ -462,16 +465,11 @@ button { background: none; border: 0; cursor: pointer; }
   white-space: nowrap;
 }
 
-/* On phones, allow the big line to wrap and force the small line
-   to its own row so nothing overflows the viewport. */
+/* On phones, let the big line wrap (single-word lines are fine).
+   The display already stacks; we just relax the nowrap so a long
+   "to Sunset Penthouse." can break across two lines if needed. */
 @media (max-width: 640px) {
-  .hero-display {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.15em;
-    width: 100%;
-    text-align: left;
-  }
+  .hero-display { gap: 0.15em; }
   .hero-display__small { white-space: normal; }
   .hero-display__big   { white-space: normal; max-width: 100%; }
 }
