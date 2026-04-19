@@ -222,9 +222,11 @@ button { background: none; border: 0; cursor: pointer; }
   height: 100%;
   object-fit: cover;
   object-position: center 40%;
-  /* Warm-tone the B&W night source so photo + video live in the
-     same color world even though the video may be color. */
-  filter: contrast(1.05) brightness(0.95) sepia(0.18) hue-rotate(-8deg) saturate(1.05);
+  /* Warm-tone + dim the source so the building stays visible but
+     overlay text always has real contrast. brightness(0.65) is the
+     sweet spot from testing — still see the architecture, but white
+     headlines pop. */
+  filter: contrast(1.10) brightness(0.65) sepia(0.18) hue-rotate(-8deg) saturate(1.05);
 }
 
 /* The video sits ON TOP of the photo, hidden until it can play. */
@@ -241,14 +243,23 @@ button { background: none; border: 0; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .stage__video.is-ready { opacity: 0 !important; }
 }
-/* Dark gradient overlays — top bar legibility + bottom CTA anchor */
+/* Three-layer veil:
+   1. uniform darkening so the middle of the page (where the hero
+      headline lives) has real contrast against the photo/video,
+   2. soft vignette pulling the corners darker still,
+   3. heavier edges for top-bar and address-strip legibility. */
 .stage__media::before {
   content: "";
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.10) 22%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.10) 70%, rgba(0,0,0,0.65) 100%),
-    radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.35) 100%);
+    linear-gradient(rgba(0,0,0,0.22), rgba(0,0,0,0.22)),
+    radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,0.32) 100%),
+    linear-gradient(180deg,
+      rgba(0,0,0,0.42) 0%,
+      rgba(0,0,0,0)    18%,
+      rgba(0,0,0,0)    78%,
+      rgba(0,0,0,0.55) 100%);
   z-index: 2;
   pointer-events: none;
 }
@@ -372,12 +383,12 @@ button { background: none; border: 0; cursor: pointer; }
   gap: 0.5rem;
   padding: 0.3rem 0.85rem 0.3rem 0.35rem;
   border-radius: var(--radius-pill);
-  font-size: 0.85rem;
-  font-weight: 400;
-  color: var(--paper);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: #ffffff;
   text-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.45),
-    0 2px 6px rgba(0, 0, 0, 0.30);
+    0 1px 2px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.35);
 }
 .update-pill__chip {
   position: relative;
@@ -431,9 +442,9 @@ button { background: none; border: 0; cursor: pointer; }
      text legible against any patch of the photo without a visible
      "drop shadow" look. */
   text-shadow:
-    0 1px 1px  rgba(0, 0, 0, 0.40),
-    0 2px 8px  rgba(0, 0, 0, 0.32),
-    0 10px 36px rgba(0, 0, 0, 0.30);
+    0 1px 2px  rgba(0, 0, 0, 0.55),
+    0 3px 10px rgba(0, 0, 0, 0.45),
+    0 12px 40px rgba(0, 0, 0, 0.40);
   margin-inline: auto;
 
   /* Two-line stacked editorial hero: the small italic "Welcome"
@@ -453,7 +464,7 @@ button { background: none; border: 0; cursor: pointer; }
   font-weight: 300;
   line-height: 1;
   letter-spacing: -0.005em;
-  color: var(--paper-mute);
+  color: rgba(255, 250, 240, 0.92);
   font-variation-settings: "opsz" 60, "SOFT" 50;
   white-space: nowrap;
 }
@@ -477,16 +488,16 @@ button { background: none; border: 0; cursor: pointer; }
 /* The supporting paragraph under the headline */
 .hero-sub {
   font-family: var(--sans);
-  font-weight: 300;
+  font-weight: 400;
   font-size: clamp(0.95rem, 0.85rem + 0.4vw, 1.1rem);
-  line-height: 1.5;
-  color: var(--paper-mute);
+  line-height: 1.55;
+  color: rgba(255, 250, 240, 0.95);
   max-width: min(56ch, 100%);
   margin-inline: auto;
   text-shadow:
-    0 1px 1px  rgba(0, 0, 0, 0.45),
-    0 2px 6px  rgba(0, 0, 0, 0.32),
-    0 6px 20px rgba(0, 0, 0, 0.20);
+    0 1px 2px  rgba(0, 0, 0, 0.65),
+    0 2px 8px  rgba(0, 0, 0, 0.45),
+    0 8px 24px rgba(0, 0, 0, 0.30);
   text-wrap: pretty;
   overflow-wrap: break-word;
 }
@@ -541,10 +552,10 @@ button { background: none; border: 0; cursor: pointer; }
   font-size: 0.7rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--paper-dim);
+  color: rgba(255, 250, 240, 0.85);
   text-shadow:
-    0 1px 1px rgba(0, 0, 0, 0.50),
-    0 2px 8px rgba(0, 0, 0, 0.30);
+    0 1px 2px rgba(0, 0, 0, 0.60),
+    0 2px 8px rgba(0, 0, 0, 0.40);
 }
 .address-strip__group { display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap; }
 @media (max-width: 640px) {
