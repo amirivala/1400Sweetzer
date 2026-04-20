@@ -46,12 +46,34 @@
       const updateStatus = async (id, status) => {
         const { error } = await window.sb
           .from('profiles').update({ status }).eq('id', id);
-        if (error) alert('Couldn\u2019t update: ' + error.message);
+        if (error) { alert('Couldn\u2019t update: ' + error.message); return false; }
+        return true;
       };
       const updateRole = async (id, role) => {
         const { error } = await window.sb
           .from('profiles').update({ role }).eq('id', id);
         if (error) alert('Couldn\u2019t update: ' + error.message);
+      };
+      const sendWelcome = async (profileId) => {
+        try {
+          const res = await fetch(
+            `${window.ENV.SUPABASE_URL}/functions/v1/send_welcome_email`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + session.access_token,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ profile_id: profileId }),
+            },
+          );
+          if (!res.ok) {
+            const txt = await res.text();
+            alert('Approved \u2014 welcome email didn\u2019t send: ' + txt.slice(0, 140));
+          }
+        } catch (e) {
+          alert('Approved \u2014 welcome email didn\u2019t send: ' + (e?.message || e));
+        }
       };
 
       const load = async () => {
@@ -97,7 +119,8 @@
             actions.push(el('button', {
               class: 'btn-mini', type: 'button', text: 'Approve',
               onclick: async () => {
-                await updateStatus(r.id, 'approved');
+                const ok = await updateStatus(r.id, 'approved');
+                if (ok) sendWelcome(r.id);   // fire-and-forget; only from pending branch
                 load();
               },
             }));
