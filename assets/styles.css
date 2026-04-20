@@ -279,7 +279,7 @@ button { background: none; border: 0; cursor: pointer; }
    The :not(.stage__media) is critical — without it, the rule below
    overrides .stage__media's `position: absolute` and pulls the photo
    into the document grid instead of letting it fill the background. */
-.stage > :not(.stage__media) { position: relative; z-index: 4; }
+.stage > :not(.stage__media):not(.nav-drawer):not(.top-bar) { position: relative; z-index: 4; }
 
 /* ---------- Floating top bar ------------------------------ */
 .top-bar {
@@ -288,6 +288,10 @@ button { background: none; border: 0; cursor: pointer; }
   justify-content: space-between;
   gap: var(--gap-3);
   padding: 1.25rem clamp(1rem, 2vw + 0.5rem, 2.5rem);
+  /* Sits above the mobile nav-drawer (z-index 100) so the burger-X
+     stays tappable while the drawer is open. */
+  position: relative;
+  z-index: 101;
 }
 
 .top-bar__brand {
@@ -295,20 +299,26 @@ button { background: none; border: 0; cursor: pointer; }
   align-items: center;
   gap: 0.7rem;
   color: var(--paper);
+  /* Pull the letterform's optical left edge flush with the page gutter —
+     Helvetica Neue's side bearing sits ~2px inside the text box, which
+     otherwise makes the brand read as slightly more inset than the
+     nav-pill's hard capsule edge on the right. */
+  margin-left: -2px;
 }
 .top-bar__brand-name {
-  display: none;
-  font-family: var(--serif);
-  font-style: italic;
-  font-weight: 400;
-  font-size: 1.15rem;
+  display: inline-block;
+  font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+  font-style: normal;
+  font-weight: 300;
+  font-size: 24px;
+  line-height: 22px;
   letter-spacing: -0.01em;
+  color: #ffffff;
   text-shadow:
-    0 1px 1px  rgba(0, 0, 0, 0.45),
-    0 2px 6px  rgba(0, 0, 0, 0.30),
-    0 6px 18px rgba(0, 0, 0, 0.18);
+    0 1px 2px  rgba(0, 0, 0, 0.55),
+    0 3px 10px rgba(0, 0, 0, 0.35),
+    0 10px 26px rgba(0, 0, 0, 0.22);
 }
-@media (min-width: 720px) { .top-bar__brand-name { display: inline; } }
 
 .nav-pill {
   display: flex;
@@ -316,7 +326,38 @@ button { background: none; border: 0; cursor: pointer; }
   gap: 0.15rem;
   padding: 0.35rem 0.4rem;
   border-radius: var(--radius-pill);
+  position: relative;
 }
+
+/* Sliding highlight — one pill-shaped element behind the links that
+   travels smoothly to whichever link is hovered or focused, then
+   eases back to the aria-current="page" link on mouse-leave. */
+.nav-pill__indicator {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0;
+  height: calc(100% - 0.7rem);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.20),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.05);
+  transform: translate(0, -50%);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+  will-change: transform, width;
+  transition:
+    opacity   0.20s var(--ease-out),
+    transform 0.42s var(--ease-out),
+    width     0.42s var(--ease-out);
+}
+.nav-pill__indicator.is-visible { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .nav-pill__indicator { transition: opacity 0.15s linear; }
+}
+
 .nav-link {
   position: relative;
   z-index: 2;
@@ -328,11 +369,11 @@ button { background: none; border: 0; cursor: pointer; }
   font-size: 0.87rem;
   font-weight: 500;
   letter-spacing: -0.005em;
-  transition: color 0.18s var(--ease), background 0.2s var(--ease);
+  transition: color 0.18s var(--ease);
   white-space: nowrap;
 }
-.nav-link:hover { color: var(--paper); background: rgba(255,255,255,0.08); }
-.nav-link[aria-current="page"] { color: var(--paper); background: rgba(255,255,255,0.10); }
+.nav-link:hover,
+.nav-link[aria-current="page"] { color: var(--paper); }
 
 .nav-cta {
   position: relative;
@@ -355,9 +396,196 @@ button { background: none; border: 0; cursor: pointer; }
 .nav-cta svg    { transition: transform 0.2s var(--ease); }
 .nav-cta:hover svg { transform: translate(2px, -2px); }
 
-/* On small phones, collapse text nav links and show a compact pill */
+/* Mobile hamburger — hidden on desktop, shown on phones in place of the
+   full nav-link list. Three absolutely-positioned bars converge at
+   center on open, top & bottom rotating 45°/-45° to form a crisp X.
+   Div-based (not SVG) so transform-origin is predictable. */
+.nav-burger {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--paper);
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+  transition: background 0.18s var(--ease);
+}
+.nav-burger:hover { background: rgba(255,255,255,0.10); }
+.nav-burger:active { transform: scale(0.94); }
+
+.nav-burger__bar {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 1.6px;
+  background: currentColor;
+  border-radius: 2px;
+  transform-origin: center;
+  transition: transform 0.32s var(--ease-out), opacity 0.2s var(--ease);
+  pointer-events: none;
+}
+.nav-burger__bar:nth-child(1) { transform: translate(-50%, calc(-50% - 5px)); }
+.nav-burger__bar:nth-child(2) { transform: translate(-50%, -50%); }
+.nav-burger__bar:nth-child(3) { transform: translate(-50%, calc(-50% + 5px)); }
+
+.nav-burger[aria-expanded="true"] .nav-burger__bar:nth-child(1) {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.nav-burger[aria-expanded="true"] .nav-burger__bar:nth-child(2) {
+  transform: translate(-50%, -50%) scaleX(0);
+  opacity: 0;
+}
+.nav-burger[aria-expanded="true"] .nav-burger__bar:nth-child(3) {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+/* Mobile breakpoint: hide the full link list + indicator, show hamburger. */
 @media (max-width: 640px) {
-  .nav-pill .nav-link:not(.nav-link--keep) { display: none; }
+  .nav-pill .nav-link { display: none; }
+  .nav-pill__indicator { display: none; }
+  .nav-burger { display: inline-flex; }
+}
+
+/* ---------- Mobile navigation drawer ------------------------ */
+.nav-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 6rem clamp(1.2rem, 6vw, 2rem) 2rem;
+  background: rgba(12, 10, 9, 0.94);
+  backdrop-filter: blur(36px) saturate(160%);
+  -webkit-backdrop-filter: blur(36px) saturate(160%);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(100%);
+  transition:
+    transform 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.3s var(--ease-out);
+}
+.nav-drawer.is-open {
+  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.nav-drawer__inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin-inline: auto;
+}
+.nav-drawer__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.15rem 0.25rem;
+  font-family: 'Helvetica Neue', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-weight: 300;
+  font-size: 1.75rem;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: rgba(250, 246, 236, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.5s var(--ease-out),
+    transform 0.55s var(--ease-out),
+    color 0.18s var(--ease);
+}
+.nav-drawer.is-open .nav-drawer__link {
+  opacity: 1;
+  transform: translateY(0);
+}
+.nav-drawer__link:hover { color: var(--paper); }
+.nav-drawer__link[aria-current="page"] {
+  color: var(--paper);
+  font-style: italic;
+  font-family: var(--serif);
+  font-weight: 400;
+}
+.nav-drawer__link .chev {
+  opacity: 0.35;
+  transition: transform 0.2s var(--ease), opacity 0.18s var(--ease);
+}
+.nav-drawer__link:hover .chev { opacity: 1; transform: translateX(3px); }
+
+/* Stagger the blur-in as the drawer opens (keeps the editorial feel). */
+.nav-drawer.is-open .nav-drawer__link:nth-child(1) { transition-delay: 0.04s; }
+.nav-drawer.is-open .nav-drawer__link:nth-child(2) { transition-delay: 0.10s; }
+.nav-drawer.is-open .nav-drawer__link:nth-child(3) { transition-delay: 0.16s; }
+.nav-drawer.is-open .nav-drawer__link:nth-child(4) { transition-delay: 0.22s; }
+.nav-drawer.is-open .nav-drawer__link:nth-child(5) { transition-delay: 0.28s; }
+.nav-drawer.is-open .nav-drawer__link:nth-child(6) { transition-delay: 0.34s; }
+.nav-drawer.is-open .nav-drawer__link:nth-child(7) { transition-delay: 0.40s; }
+.nav-drawer.is-open .nav-drawer__link:nth-child(8) { transition-delay: 0.46s; }
+
+.nav-drawer__foot {
+  margin-top: auto;
+  padding-top: 2rem;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--paper-low);
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-out) 0.5s;
+}
+.nav-drawer.is-open .nav-drawer__foot { opacity: 1; }
+
+@media (min-width: 641px) {
+  .nav-drawer, .nav-burger { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-drawer, .nav-drawer__link { transition: opacity 0.2s linear !important; transform: none !important; }
+}
+
+/* ---------- Apple-style liquid glass — slow specular sweep ---------
+   Scoped to .nav-pill only so the same treatment doesn't fire on every
+   glass card in the app. Replaces the static vertical highlight on the
+   1.4px bordered frame with a conic gradient whose rotation is driven
+   by an animated @property — one bright "wet glass" spot slides around
+   the capsule continuously. Kept very slow (28s) and peak opacity ~0.55
+   so it reads as environmental light, never a spinner. */
+@property --sp-shine-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+@keyframes sp-shine-rotate { to { --sp-shine-angle: 360deg; } }
+
+.nav-pill.liquid-glass::before {
+  background: conic-gradient(
+    from var(--sp-shine-angle, 0deg),
+    rgba(255, 255, 255, 0.06)   0deg,
+    rgba(255, 255, 255, 0.14)  30deg,
+    rgba(255, 255, 255, 0.55)  60deg,
+    rgba(255, 255, 255, 0.14)  90deg,
+    rgba(255, 255, 255, 0.06) 140deg,
+    rgba(255, 255, 255, 0.06) 220deg,
+    rgba(255, 255, 255, 0.12) 250deg,
+    rgba(255, 255, 255, 0.32) 275deg,
+    rgba(255, 255, 255, 0.12) 300deg,
+    rgba(255, 255, 255, 0.06) 360deg
+  );
+  animation: sp-shine-rotate 28s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-pill.liquid-glass::before { animation: none; }
 }
 
 /* ---------- The hero content ------------------------------ */
@@ -469,20 +697,19 @@ button { background: none; border: 0; cursor: pointer; }
   white-space: nowrap;
 }
 .hero-display__big {
-  font-size: clamp(2.2rem, 1.0rem + 5vw, 6rem);
+  font-size: clamp(1.9rem, 0.4rem + 6.5vw, 7.5rem);
   font-weight: 400;
   line-height: 0.94;
   letter-spacing: -0.025em;
   white-space: nowrap;
 }
 
-/* On phones, let the big line wrap (single-word lines are fine).
-   The display already stacks; we just relax the nowrap so a long
-   "to Sunset Penthouse." can break across two lines if needed. */
+/* Keep the big line on a single row across breakpoints — "Sunset
+   Penthouse" is short enough that the responsive clamp keeps it
+   inside the viewport on phones. */
 @media (max-width: 640px) {
   .hero-display { gap: 0.15em; }
   .hero-display__small { white-space: normal; }
-  .hero-display__big   { white-space: normal; max-width: 100%; }
 }
 
 /* The supporting paragraph under the headline */
@@ -578,7 +805,7 @@ button { background: none; border: 0; cursor: pointer; }
   padding: var(--gap-4);
   isolation: isolate;
   background:
-    radial-gradient(ellipse at 70% 30%, #3b2417 0%, #1a0e08 70%);
+    radial-gradient(ellipse at 70% 30%, #2a2a2a 0%, #0a0a0a 70%);
   overflow: hidden;
 }
 .auth-shell::before {
@@ -647,9 +874,9 @@ button { background: none; border: 0; cursor: pointer; }
 }
 .field input::placeholder { color: var(--paper-low); }
 .field input:focus {
-  border-color: var(--terracotta);
+  border-color: rgba(255, 255, 255, 0.55);
   background: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 0 0 4px rgba(217, 106, 63, 0.18);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12);
 }
 .cta--auth {
   width: 100%;
@@ -750,7 +977,7 @@ button { background: none; border: 0; cursor: pointer; }
 .page > .top-bar {
   position: sticky;
   top: 0;
-  z-index: 50;
+  z-index: 101;
   background: rgba(12, 10, 9, 0.55);
   backdrop-filter: blur(14px) saturate(160%);
   -webkit-backdrop-filter: blur(14px) saturate(160%);

@@ -9,9 +9,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css" />
+  <link rel="stylesheet" href="/assets/styles.css?v=7" />
 
   <link rel="preload" as="image" href="/assets/building.jpg" fetchpriority="high" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body>
 
@@ -45,14 +46,12 @@
     <!-- Floating top bar: brand left, glass nav pill right -->
     <header class="top-bar fade delay-1">
       <a class="top-bar__brand" href="/home.html" aria-label="Sunset Penthouse home">
-        <span class="mark liquid-glass-strong">
-          <span aria-hidden="true">SP</span>
-        </span>
-        <span class="top-bar__brand-name">Sunset Penthouse</span>
+        <span class="top-bar__brand-name">Sunset<br />Penthouse</span>
       </a>
 
       <nav aria-label="Primary">
         <div class="nav-pill liquid-glass">
+          <span class="nav-pill__indicator" aria-hidden="true"></span>
           <a class="nav-link nav-link--keep" aria-current="page" href="/home.html">Home</a>
           <a class="nav-link" href="/news.html">News</a>
           <a class="nav-link" href="/bulletin.html">Bulletin</a>
@@ -65,9 +64,34 @@
               <path d="M7 17L17 7"/><path d="M7 7h10v10"/>
             </svg>
           </button>
+          <button
+            class="nav-burger"
+            id="navBurger"
+            type="button"
+            aria-label="Open menu"
+            aria-expanded="false"
+            aria-controls="navDrawer"
+          >
+            <span class="nav-burger__bar"></span>
+            <span class="nav-burger__bar"></span>
+            <span class="nav-burger__bar"></span>
+          </button>
         </div>
       </nav>
     </header>
+
+    <aside id="navDrawer" class="nav-drawer" aria-hidden="true" aria-label="Primary navigation">
+      <div class="nav-drawer__inner">
+        <a class="nav-drawer__link" href="/home.html"      aria-current="page">Home      <span class="chev" aria-hidden="true">&rarr;</span></a>
+        <a class="nav-drawer__link" href="/news.html">      News      <span class="chev" aria-hidden="true">&rarr;</span></a>
+        <a class="nav-drawer__link" href="/bulletin.html">  Bulletin  <span class="chev" aria-hidden="true">&rarr;</span></a>
+        <a class="nav-drawer__link" href="/calendar.html">  Calendar  <span class="chev" aria-hidden="true">&rarr;</span></a>
+        <a class="nav-drawer__link" href="/directory.html"> Directory <span class="chev" aria-hidden="true">&rarr;</span></a>
+        <a class="nav-drawer__link" href="/providers.html"> Providers <span class="chev" aria-hidden="true">&rarr;</span></a>
+        <a class="nav-drawer__link" href="/account.html">   Account   <span class="chev" aria-hidden="true">&rarr;</span></a>
+        <div class="nav-drawer__foot">1400 N Sweetzer Ave · West Hollywood</div>
+      </div>
+    </aside>
 
     <!-- Centered hero text -->
     <section class="hero" aria-label="Latest from your building">
@@ -84,25 +108,10 @@
         </h1>
 
         <p class="hero-sub blur-in delay-4">
-          Your building's news, neighbors, calendar, and trusted contacts —
-          gathered in one quiet place. Mid-century, west-facing, on a hill
+          Your building's news, neighbors, calendar, and trusted contacts,
+          gathered in one quiet place. Mid-century, west-facing,
           on Sweetzer Avenue.
         </p>
-
-        <div class="hero-cta-row blur-in delay-5">
-          <a class="cta liquid-glass-strong" href="/news.html">
-            <span>Read the news</span>
-            <svg class="cta-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M7 17L17 7"/><path d="M7 7h10v10"/>
-            </svg>
-          </a>
-          <a class="cta" href="/calendar.html">
-            <svg class="cta-play" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M5 4 L19 12 L5 20 Z" />
-            </svg>
-            <span>View the calendar</span>
-          </a>
-        </div>
 
       </div>
     </section>
@@ -137,6 +146,74 @@
       // Safety net: if canplay never fires (slow connection, blocked
       // autoplay), still try to reveal once the loadeddata event lands.
       video.addEventListener('loadeddata', reveal, { once: true });
+    })();
+  </script>
+
+  <script>
+    // Sliding nav-pill indicator. Event-delegated so it works on every
+    // .nav-link in the pill and doesn't care about async additions.
+    (() => {
+      const pill = document.querySelector('.nav-pill');
+      const ind  = pill?.querySelector('.nav-pill__indicator');
+      if (!pill || !ind) return;
+
+      const getResting = () => pill.querySelector('.nav-link[aria-current="page"]');
+      const slide = (link) => {
+        if (!link) { ind.classList.remove('is-visible'); return; }
+        const p = pill.getBoundingClientRect();
+        const l = link.getBoundingClientRect();
+        ind.style.width = l.width + 'px';
+        ind.style.height = l.height + 'px';
+        ind.style.transform = `translate(${l.left - p.left}px, -50%)`;
+        ind.classList.add('is-visible');
+      };
+
+      requestAnimationFrame(() => slide(getResting()));
+
+      pill.addEventListener('pointerover', (ev) => {
+        const link = ev.target.closest('.nav-link');
+        if (link && pill.contains(link)) slide(link);
+      });
+      pill.addEventListener('focusin', (ev) => {
+        if (ev.target.matches?.('.nav-link')) slide(ev.target);
+      });
+      pill.addEventListener('pointerleave', () => slide(getResting()));
+      pill.addEventListener('focusout', (ev) => {
+        if (!pill.contains(ev.relatedTarget)) slide(getResting());
+      });
+      window.addEventListener('resize', () => slide(getResting()), { passive: true });
+    })();
+
+    // Mobile hamburger drawer.
+    (() => {
+      const burger = document.getElementById('navBurger');
+      const drawer = document.getElementById('navDrawer');
+      if (!burger || !drawer) return;
+      const open = () => {
+        drawer.classList.add('is-open');
+        drawer.setAttribute('aria-hidden', 'false');
+        burger.setAttribute('aria-expanded', 'true');
+        burger.setAttribute('aria-label', 'Close menu');
+        document.body.style.overflow = 'hidden';
+      };
+      const close = () => {
+        drawer.classList.remove('is-open');
+        drawer.setAttribute('aria-hidden', 'true');
+        burger.setAttribute('aria-expanded', 'false');
+        burger.setAttribute('aria-label', 'Open menu');
+        document.body.style.overflow = '';
+      };
+      burger.addEventListener('click', () =>
+        drawer.classList.contains('is-open') ? close() : open());
+      drawer.addEventListener('click', (ev) => {
+        if (ev.target === drawer || ev.target.closest('.nav-drawer__link')) close();
+      });
+      document.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape' && drawer.classList.contains('is-open')) close();
+      });
+      window.addEventListener('resize', () => {
+        if (window.innerWidth > 640 && drawer.classList.contains('is-open')) close();
+      }, { passive: true });
     })();
   </script>
 

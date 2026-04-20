@@ -39,6 +39,81 @@
     return n;
   };
 
+  // Wires up the sliding pill indicator on a .nav-pill. Uses event
+  // delegation so nav-links added later (e.g. the Admin link) still
+  // work without re-binding. A MutationObserver keeps the resting
+  // position in sync with the live DOM.
+  const initNavIndicator = (pill) => {
+    if (!pill) return;
+    const ind = pill.querySelector('.nav-pill__indicator');
+    if (!ind) return;
+
+    const getResting = () => pill.querySelector('.nav-link[aria-current="page"]');
+    const slide = (link) => {
+      if (!link) { ind.classList.remove('is-visible'); return; }
+      const pRect = pill.getBoundingClientRect();
+      const lRect = link.getBoundingClientRect();
+      ind.style.width = lRect.width + 'px';
+      ind.style.height = lRect.height + 'px';
+      ind.style.transform = `translate(${lRect.left - pRect.left}px, -50%)`;
+      ind.classList.add('is-visible');
+    };
+
+    // Let layout settle before the first measurement (fonts, flex spacing).
+    requestAnimationFrame(() => slide(getResting()));
+
+    pill.addEventListener('pointerover', (ev) => {
+      const link = ev.target.closest('.nav-link');
+      if (link && pill.contains(link)) slide(link);
+    });
+    pill.addEventListener('focusin', (ev) => {
+      if (ev.target.matches?.('.nav-link')) slide(ev.target);
+    });
+    pill.addEventListener('pointerleave', () => slide(getResting()));
+    pill.addEventListener('focusout', (ev) => {
+      if (!pill.contains(ev.relatedTarget)) slide(getResting());
+    });
+    window.addEventListener('resize', () => slide(getResting()), { passive: true });
+
+    // Admin link gets inserted asynchronously after sign-in resolves.
+    new MutationObserver(() => slide(getResting())).observe(pill, { childList: true });
+  };
+
+  // Hamburger → full-screen drawer. Locks body scroll while open,
+  // closes on link click, backdrop tap, or Escape.
+  const initNavDrawer = (burger, drawer) => {
+    if (!burger || !drawer) return;
+    const inner = drawer.querySelector('.nav-drawer__inner');
+    const open = () => {
+      drawer.classList.add('is-open');
+      drawer.setAttribute('aria-hidden', 'false');
+      burger.setAttribute('aria-expanded', 'true');
+      burger.setAttribute('aria-label', 'Close menu');
+      document.body.style.overflow = 'hidden';
+    };
+    const close = () => {
+      drawer.classList.remove('is-open');
+      drawer.setAttribute('aria-hidden', 'true');
+      burger.setAttribute('aria-expanded', 'false');
+      burger.setAttribute('aria-label', 'Open menu');
+      document.body.style.overflow = '';
+    };
+    burger.addEventListener('click', () =>
+      drawer.classList.contains('is-open') ? close() : open());
+    drawer.addEventListener('click', (ev) => {
+      if (ev.target === drawer) close();
+      else if (ev.target.closest('.nav-drawer__link')) close();
+    });
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Escape' && drawer.classList.contains('is-open')) close();
+    });
+    // If we resize above the mobile breakpoint while the drawer is
+    // open, close it so the desktop pill returns cleanly.
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 640 && drawer.classList.contains('is-open')) close();
+    }, { passive: true });
+  };
+
   // SVG arrow icon used inside the account button.
   const arrowIcon = () => {
     const NS = 'http://www.w3.org/2000/svg';
@@ -69,20 +144,53 @@
     arrowIcon(),
   );
 
+  const indicator = e('span', { class: 'nav-pill__indicator', 'aria-hidden': 'true' });
+
+  // Div-based hamburger — three bars that CSS animates into an X on
+  // aria-expanded. Div bars beat SVG lines because transform-origin
+  // on a zero-height <line> is unreliable across engines.
+  const burgerBtn = e('button', {
+    class: 'nav-burger',
+    id: 'navBurger',
+    type: 'button',
+    'aria-label': 'Open menu',
+    'aria-expanded': 'false',
+    'aria-controls': 'navDrawer',
+  },
+    e('span', { class: 'nav-burger__bar' }),
+    e('span', { class: 'nav-burger__bar' }),
+    e('span', { class: 'nav-burger__bar' }),
+  );
+
   const topBar = e('header', { class: 'top-bar' },
     e('a',
       { class: 'top-bar__brand', href: '/home.html', 'aria-label': 'Sunset Penthouse home' },
-      e('span', { class: 'mark liquid-glass-strong' },
-        e('span', { 'aria-hidden': 'true', text: 'SP' }),
-      ),
-      e('span', { class: 'top-bar__brand-name', text: 'Sunset Penthouse' }),
+      e('span', { class: 'top-bar__brand-name' }, 'Sunset', e('br'), 'Penthouse'),
     ),
     e('nav', { 'aria-label': 'Primary' },
-      e('div', { class: 'nav-pill liquid-glass' }, ...navLinks, accountBtn),
+      e('div', { class: 'nav-pill liquid-glass' }, indicator, ...navLinks, accountBtn, burgerBtn),
     ),
   );
 
+  // Mobile drawer — a separate aside that mirrors the nav-pill's items.
+  const drawerLinks = navItems.map((item) => e('a', {
+    class: 'nav-drawer__link',
+    href: item.href,
+    ...(path === item.href ? { 'aria-current': 'page' } : {}),
+  }, item.label, e('span', { class: 'chev', 'aria-hidden': 'true', text: '\u2192' })));
+  const drawer = e('aside', {
+    id: 'navDrawer',
+    class: 'nav-drawer',
+    'aria-hidden': 'true',
+    'aria-label': 'Primary navigation',
+  }, e('div', { class: 'nav-drawer__inner' }, ...drawerLinks,
+      e('div', { class: 'nav-drawer__foot', text: '1400 N Sweetzer Ave · West Hollywood' }),
+    ));
+
   document.body.prepend(topBar);
+  document.body.appendChild(drawer);
+  initNavIndicator(topBar.querySelector('.nav-pill'));
+  initNavDrawer(burgerBtn, drawer);
 
   // Personalize the account button label, hook up sign-out.
   const { data: { session } } = await window.sb.auth.getSession();
@@ -113,6 +221,16 @@
         ...(adminPath ? { 'aria-current': 'page' } : {}),
       });
       if (accountLink) accountLink.parentNode.insertBefore(adminLink, accountLink);
+
+      // Mirror the Admin entry in the mobile drawer so phones see it too.
+      const drawerInner = drawer.querySelector('.nav-drawer__inner');
+      const drawerAccount = drawerInner?.querySelector('a[href="/account.html"]');
+      const drawerAdmin = e('a', {
+        class: 'nav-drawer__link',
+        href: '/admin/index.html',
+        ...(adminPath ? { 'aria-current': 'page' } : {}),
+      }, 'Admin', e('span', { class: 'chev', 'aria-hidden': 'true', text: '\u2192' }));
+      if (drawerAccount) drawerInner.insertBefore(drawerAdmin, drawerAccount);
     }
   } catch { /* non-fatal */ }
 

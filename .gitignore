@@ -12,3 +12,10 @@ supabase/config.toml
 
 # Tooling
 .claude/
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+
+# Vercel local state
+.vercel/
