@@ -75,11 +75,42 @@
           alert('Approved \u2014 welcome email didn\u2019t send: ' + (e?.message || e));
         }
       };
+      // Tries to fully delete the user (frees the email). Falls back to a
+      // soft status='removed' if the user has authored content that the DB
+      // won't let us delete. Returns the mode the server used, or null on error.
+      const deleteUser = async (profileId) => {
+        try {
+          const res = await fetch(
+            `${window.ENV.SUPABASE_URL}/functions/v1/admin_delete_user`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': 'Bearer ' + session.access_token,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ profile_id: profileId }),
+            },
+          );
+          const payload = await res.json().catch(() => ({}));
+          if (!res.ok || !payload.ok) {
+            alert('Couldn\u2019t remove: ' + (payload.detail || payload.reason || res.statusText));
+            return null;
+          }
+          if (payload.mode === 'soft_remove') {
+            alert('Kept as removed because this person already posted content. They\u2019re hidden from the list.');
+          }
+          return payload.mode;
+        } catch (e) {
+          alert('Couldn\u2019t remove: ' + (e?.message || e));
+          return null;
+        }
+      };
 
       const load = async () => {
-        const { data, error } = await window.sb
+        const { data: raw, error } = await window.sb
           .from('profiles')
           .select('id, full_name, unit_number, phone, role, status, created_at')
+          .neq('status', 'removed')
           .order('status', { ascending: true })
           .order('unit_number', { ascending: true });
 
@@ -91,7 +122,8 @@
             ));
           return;
         }
-        if (!data || data.length === 0) {
+        const data = raw || [];
+        if (data.length === 0) {
           mount(list,
             el('div', { class: 'empty' },
               el('div', { class: 'empty__title', text: 'No residents yet' }),
@@ -100,8 +132,8 @@
           return;
         }
 
-        // Sort: pending first, then approved, then removed.
-        const order = { pending: 0, approved: 1, removed: 2 };
+        // Sort: pending first, then approved.
+        const order = { pending: 0, approved: 1 };
         data.sort((a, b) => (order[a.status] - order[b.status]));
 
         const rows = data.map((r) => {
@@ -127,8 +159,8 @@
             actions.push(el('button', {
               class: 'btn-mini btn-mini--danger', type: 'button', text: 'Reject',
               onclick: async () => {
-                if (!confirm('Reject ' + (r.full_name || 'this signup') + '?')) return;
-                await updateStatus(r.id, 'removed');
+                if (!confirm('Reject ' + (r.full_name || 'this signup') + '? This deletes their account; the email can be used again.')) return;
+                await deleteUser(r.id);
                 load();
               },
             }));
@@ -157,21 +189,13 @@
                 class: 'btn-mini btn-mini--danger', type: 'button', text: 'Remove',
                 onclick: async () => {
                   if (!confirm('Remove ' + (r.full_name || 'this resident') + ' from the building? They\u2019ll lose access.')) return;
-                  await updateStatus(r.id, 'removed');
+                  await deleteUser(r.id);
                   load();
                 },
               }));
             } else {
               actions.push(el('span', { class: 'admin-row__meta', text: 'You' }));
             }
-          } else if (r.status === 'removed') {
-            actions.push(el('button', {
-              class: 'btn-mini', type: 'button', text: 'Restore',
-              onclick: async () => {
-                await updateStatus(r.id, 'approved');
-                load();
-              },
-            }));
           }
 
           return el('article', { class: 'card liquid-glass admin-row' },
