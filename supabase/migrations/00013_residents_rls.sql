@@ -108,14 +108,17 @@ begin
     values (v_unit, v_full_name, p_phone, p_profile_id)
     returning id into v_resident_id;
   else
+    -- profile_id is null guard prevents race where two admins click Approve
+    -- simultaneously for different signups targeting the same roster row.
     update residents
        set profile_id = p_profile_id,
            phone      = p_phone
      where id = p_resident_id
+       and profile_id is null
     returning id into v_resident_id;
 
     if v_resident_id is null then
-      raise exception 'Resident row not found: %', p_resident_id;
+      raise exception 'Resident row not found or already claimed: %', p_resident_id;
     end if;
   end if;
 

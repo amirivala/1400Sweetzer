@@ -43,12 +43,6 @@
       if (!session) return;
       const meId = session.user.id;
 
-      const updateStatus = async (id, status) => {
-        const { error } = await window.sb
-          .from('profiles').update({ status }).eq('id', id);
-        if (error) { alert('Couldn\u2019t update: ' + error.message); return false; }
-        return true;
-      };
       const updateRole = async (id, role) => {
         const { error } = await window.sb
           .from('profiles').update({ role }).eq('id', id);
@@ -212,11 +206,14 @@
                 el('span', { text: c.display_name }),
               )
             );
+            // Pre-select "Create new" only when there are no candidates at all.
+            // When candidates exist but none match well enough, leave nothing
+            // selected so the admin picks consciously.
             candidateChoices.push(
               el('label', { class: 'admin-candidate' },
                 el('input', {
                   type: 'radio', name: radioName, value: '__new__',
-                  checked: !preSelected,
+                  checked: !preSelected && unitCandidates.length === 0,
                 }),
                 el('span', { text: '+ Create new roster entry' }),
               )
@@ -231,7 +228,8 @@
               class: 'btn-mini', type: 'button', text: 'Approve & Link',
               onclick: async () => {
                 const picked = document.querySelector(`input[name="${radioName}"]:checked`);
-                const residentId = picked && picked.value !== '__new__' ? picked.value : null;
+                if (!picked) { alert('Pick a roster match, or choose Create new.'); return; }
+                const residentId = picked.value !== '__new__' ? picked.value : null;
                 const { error: rpcErr } = await window.sb.rpc('approve_and_link', {
                   p_profile_id:  r.id,
                   p_resident_id: residentId,

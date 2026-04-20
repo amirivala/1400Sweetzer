@@ -47,7 +47,7 @@
 
       const [
         residentsCount, pendingCount, postsCount, draftsCount,
-        eventsCount, providersCount, bulletinsCount,
+        eventsCount, providersCount, bulletinsCount, rosterCount,
       ] = await Promise.all([
         counts('profiles', { status: 'approved' }),
         counts('profiles', { status: 'pending' }),
@@ -56,6 +56,7 @@
         counts('events'),
         counts('providers'),
         counts('bulletins'),
+        counts('residents'),
       ]);
 
       const tile = (num, label, hint, href) =>
@@ -78,6 +79,9 @@
         tile(residentsCount, 'Approved residents',
              pendingCount ? (pendingCount + ' pending approval') : 'Manage residents and admins.',
              '/admin/residents.html'),
+        tile(rosterCount, 'Roster',
+             'Master list of everyone in the building.',
+             '/admin/roster.html'),
         tile(bulletinsCount, 'Bulletin posts',
              'Resident-posted board (read-only here).',
              '/bulletin.html'),
