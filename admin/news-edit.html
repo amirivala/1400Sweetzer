@@ -111,15 +111,19 @@
       const { data: { session } } = await window.sb.auth.getSession();
       if (!session) return;
 
-      const id = new URLSearchParams(location.search).get('id');
+      // Mutable so a fresh draft's id (set after the first insert) flows
+      // through to subsequent saves as an UPDATE — otherwise each save
+      // creates a duplicate row.
+      let currentId = new URLSearchParams(location.search).get('id');
       let isPublished = false;
+      let hasPublishedAt = false;
 
-      if (id) {
+      if (currentId) {
         // Editing existing
         const { data: post, error } = await window.sb
           .from('news_posts')
-          .select('id, title, body, cover_image_url, published, email_residents')
-          .eq('id', id).single();
+          .select('id, title, body, cover_image_url, published, email_residents, published_at')
+          .eq('id', currentId).single();
         if (error || !post) {
           statusEl.textContent = 'Couldn\u2019t load post: ' + (error?.message || 'not found');
           return;
@@ -128,6 +132,7 @@
         coverEl.value     = post.cover_image_url || '';
         emailEl.checked   = !!post.email_residents;
         isPublished       = !!post.published;
+        hasPublishedAt    = !!post.published_at;
         // Setting Quill from a string of HTML — Quill handles its own
         // sanitization for the editor view; this is content authored by
         // an admin previously, sanitized again on render via DOMPurify
@@ -153,8 +158,10 @@
           published: publish,
           email_residents: emailEl.checked,
         };
-        // Stamp published_at on transition to published
-        if (publish && !isPublished) payload.published_at = new Date().toISOString();
+        // Stamp published_at on first publish, and also self-heal any
+        // existing published row whose stamp is missing (e.g. from the
+        // previous editor bug that could leave published_at null).
+        if (publish && !hasPublishedAt) payload.published_at = new Date().toISOString();
         return payload;
       };
 
@@ -194,15 +201,14 @@
         if (!payload) { draftBtn.disabled = publishBtn.disabled = false; return; }
 
         let error;
-        let savedId = id;
-        if (id) {
-          ({ error } = await window.sb.from('news_posts').update(payload).eq('id', id));
+        if (currentId) {
+          ({ error } = await window.sb.from('news_posts').update(payload).eq('id', currentId));
         } else {
           const { data, error: iErr } = await window.sb
             .from('news_posts').insert(payload).select('id').single();
           error = iErr;
           if (data?.id) {
-            savedId = data.id;
+            currentId = data.id;
             // Rewrite URL so subsequent saves edit, not insert.
             history.replaceState(null, '', '/admin/news-edit.html?id=' + encodeURIComponent(data.id));
           }
@@ -215,10 +221,11 @@
         if (publish) {
           statusEl.textContent = 'Published \u2713';
           isPublished = true;
+          if (payload.published_at) hasPublishedAt = true;
           publishBtnLabel.textContent = 'Save changes';
           deleteBtn.style.display = '';
           pageTitle.textContent = 'Edit post.';
-          if (willEmail && savedId) await sendEmail(savedId);
+          if (willEmail && currentId) await sendEmail(currentId);
         } else {
           statusEl.textContent = 'Draft saved \u2713';
           deleteBtn.style.display = '';
@@ -232,9 +239,9 @@
       });
 
       deleteBtn.addEventListener('click', async () => {
-        if (!id) return;
+        if (!currentId) return;
         if (!confirm('Delete this post for good?')) return;
-        const { error } = await window.sb.from('news_posts').delete().eq('id', id);
+        const { error } = await window.sb.from('news_posts').delete().eq('id', currentId);
         if (error) { alert('Couldn\u2019t delete: ' + error.message); return; }
         location.href = '/admin/news.html';
       });

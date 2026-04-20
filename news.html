@@ -47,11 +47,12 @@
       const { data: posts, error } = await window.sb
         .from('news_posts')
         .select(`
-          id, title, body, cover_image_url, published_at,
+          id, title, body, cover_image_url, published_at, created_at,
           author:profiles!author_id ( full_name )
         `)
         .eq('published', true)
-        .order('published_at', { ascending: false });
+        .order('published_at', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false });
 
       if (error) {
         mount(list,
@@ -79,12 +80,13 @@
       const cards = posts.map((p, idx) => {
         const lede = fmt.stripHtml(p.body).slice(0, 220);
         const author = p.author?.full_name || 'The board';
+        const dateIso = p.published_at || p.created_at;
         return el('article', {
             class: 'card news-card liquid-glass rise',
             style: { animationDelay: `${0.10 + idx * 0.06}s` },
           },
           el('div', { class: 'news-card__meta' },
-            el('time', { datetime: p.published_at, text: fmt.date(p.published_at) }),
+            el('time', { datetime: dateIso, text: fmt.date(dateIso) }),
             el('span', { 'aria-hidden': 'true', text: '·' }),
             el('span', { text: author }),
           ),

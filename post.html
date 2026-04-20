@@ -58,7 +58,7 @@
       const { data: post, error } = await window.sb
         .from('news_posts')
         .select(`
-          id, title, body, cover_image_url, published_at,
+          id, title, body, cover_image_url, published_at, created_at,
           author:profiles!author_id ( full_name )
         `)
         .eq('id', id)
@@ -84,11 +84,12 @@
       // the input contained <script> or onclick it gets stripped.
       body.appendChild(renderRichText(post.body));
 
+      const dateIso = post.published_at || post.created_at;
       mount(content,
         el('div', { class: 'article__meta' },
           el('time', {
-            datetime: post.published_at,
-            text: fmt.longDate(post.published_at),
+            datetime: dateIso,
+            text: fmt.longDate(dateIso),
           }),
         ),
         el('h1', { class: 'article__title', text: post.title }),
