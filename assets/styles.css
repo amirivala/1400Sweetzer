@@ -1884,3 +1884,59 @@ button { background: none; border: 0; cursor: pointer; }
   line-height: 1.45;
 }
 
+/* Directory tag chips */
+.dir-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  margin-left: 6px;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  vertical-align: middle;
+  line-height: 1.6;
+}
+.dir-tag--board      { background: rgba(230, 145, 90, 0.15); color: var(--terracotta, #c25d2a); }
+.dir-tag--tenant     { background: rgba(180, 180, 180, 0.18); color: #8a8a8a; }
+.dir-tag--admin      { background: rgba(90, 130, 230, 0.15); color: #4a6dd8; }
+.dir-tag--registered { background: rgba(120, 120, 120, 0.1); color: #999; font-weight: 400; }
+
+/* Multiple-people-per-unit card layout */
+.dir-person {
+  padding-top: 10px;
+  margin-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.dir-person:first-of-type {
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
+}
+.dir-person__name {
+  font-weight: 500;
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+/* Admin approval: roster candidate matching */
+.admin-candidates {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.02);
+}
+.admin-candidates__label {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 6px;
+}
+.admin-candidate {
+  display: block;
+  padding: 4px 0;
+  font-size: 14px;
+  cursor: pointer;
+}
+.admin-candidate input { margin-right: 8px; vertical-align: middle; }
+

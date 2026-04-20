@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=7" />
+  <link rel="stylesheet" href="/assets/styles.css?v=8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="page">
@@ -43,12 +43,6 @@
       if (!session) return;
       const meId = session.user.id;
 
-      const updateStatus = async (id, status) => {
-        const { error } = await window.sb
-          .from('profiles').update({ status }).eq('id', id);
-        if (error) { alert('Couldn\u2019t update: ' + error.message); return false; }
-        return true;
-      };
       const updateRole = async (id, role) => {
         const { error } = await window.sb
           .from('profiles').update({ role }).eq('id', id);
@@ -127,6 +121,26 @@
             ));
           return;
         }
+
+        // Load candidate roster rows for pending signups in one batch.
+        const pendingUnits = Array.from(new Set(
+          (raw || []).filter((r) => r.status === 'pending').map((r) => r.unit_number).filter(Boolean),
+        ));
+        let candidatesByUnit = new Map();
+        if (pendingUnits.length > 0) {
+          const { data: cands, error: cErr } = await window.sb
+            .from('residents')
+            .select('id, unit_number, display_name, phone, profile_id')
+            .in('unit_number', pendingUnits)
+            .is('profile_id', null)
+            .order('sort_order', { ascending: true });
+          if (cErr) { console.error('residents candidates load failed', cErr); }
+          (cands || []).forEach((c) => {
+            if (!candidatesByUnit.has(c.unit_number)) candidatesByUnit.set(c.unit_number, []);
+            candidatesByUnit.get(c.unit_number).push(c);
+          });
+        }
+
         const data = raw || [];
         if (data.length === 0) {
           mount(list,
@@ -141,8 +155,33 @@
         const order = { pending: 0, approved: 1 };
         data.sort((a, b) => (order[a.status] - order[b.status]));
 
+        const normalizeName = (s) => String(s || '').toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim();
+        const nameScore = (signup, candidate) => {
+          const a = normalizeName(signup), b = normalizeName(candidate);
+          if (!a || !b) return 0;
+          if (a === b) return 1.0;
+          const aToks = a.split(' '), bToks = b.split(' ');
+          const aLast = aToks[aToks.length - 1], bLast = bToks[bToks.length - 1];
+          if (aLast === bLast && aToks[0] && bToks[0] && (aToks[0].startsWith(bToks[0]) || bToks[0].startsWith(aToks[0]))) {
+            return 0.8;
+          }
+          const set = new Set(bToks);
+          const overlap = aToks.filter((t) => set.has(t)).length;
+          return overlap / Math.max(aToks.length, bToks.length);
+        };
+        const pickBestCandidate = (signup, candidates) => {
+          if (!candidates || candidates.length === 0) return null;
+          let best = null, bestScore = 0;
+          for (const c of candidates) {
+            const s = nameScore(signup.full_name, c.display_name);
+            if (s > bestScore) { best = c; bestScore = s; }
+          }
+          return bestScore >= 0.7 ? best : null;
+        };
+
         const rows = data.map((r) => {
           const isMe = r.id === meId;
+          let candidatesBlock = null;
           const statusPill = el('span', {
             class: 'admin-status-pill admin-status-pill--' + r.status,
             text: r.status,
@@ -153,11 +192,51 @@
 
           const actions = [];
           if (r.status === 'pending') {
+            const unitCandidates = candidatesByUnit.get(r.unit_number) || [];
+            const preSelected = pickBestCandidate(r, unitCandidates);
+            // Per-row radio group name (avoids collisions between cards).
+            const radioName = `roster_${r.id}`;
+
+            const candidateChoices = unitCandidates.map((c) =>
+              el('label', { class: 'admin-candidate' },
+                el('input', {
+                  type: 'radio', name: radioName, value: c.id,
+                  checked: preSelected && preSelected.id === c.id,
+                }),
+                el('span', { text: c.display_name }),
+              )
+            );
+            // Pre-select "Create new" only when there are no candidates at all.
+            // When candidates exist but none match well enough, leave nothing
+            // selected so the admin picks consciously.
+            candidateChoices.push(
+              el('label', { class: 'admin-candidate' },
+                el('input', {
+                  type: 'radio', name: radioName, value: '__new__',
+                  checked: !preSelected && unitCandidates.length === 0,
+                }),
+                el('span', { text: '+ Create new roster entry' }),
+              )
+            );
+
+            candidatesBlock = el('div', { class: 'admin-candidates' },
+              el('div', { class: 'admin-candidates__label', text: `Roster matches for Unit ${r.unit_number || '—'}:` }),
+              ...candidateChoices,
+            );
+
             actions.push(el('button', {
-              class: 'btn-mini', type: 'button', text: 'Approve',
+              class: 'btn-mini', type: 'button', text: 'Approve & Link',
               onclick: async () => {
-                const ok = await updateStatus(r.id, 'approved');
-                if (ok) sendWelcome(r.id);   // fire-and-forget; only from pending branch
+                const picked = document.querySelector(`input[name="${radioName}"]:checked`);
+                if (!picked) { alert('Pick a roster match, or choose Create new.'); return; }
+                const residentId = picked.value !== '__new__' ? picked.value : null;
+                const { error: rpcErr } = await window.sb.rpc('approve_and_link', {
+                  p_profile_id:  r.id,
+                  p_resident_id: residentId,
+                  p_phone:       r.phone || null,
+                });
+                if (rpcErr) { alert('Couldn\u2019t approve: ' + rpcErr.message); return; }
+                sendWelcome(r.id); // fire-and-forget, matches prior behavior
                 load();
               },
             }));
@@ -211,6 +290,7 @@
                 rolePill,
                 r.phone ? el('span', { text: r.phone }) : null,
               ),
+              candidatesBlock,
             ),
             el('div', { class: 'admin-row__actions' }, ...actions),
           );

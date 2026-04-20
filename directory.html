@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=7" />
+  <link rel="stylesheet" href="/assets/styles.css?v=8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="page">
@@ -19,8 +19,10 @@
       <span class="page-header__kicker">Directory</span>
       <h1 class="page-header__title">Your neighbors.</h1>
       <p class="page-header__sub">
-        Who lives where. If you'd rather not appear here, you can hide
-        your number from your <a href="/account.html" style="color: var(--terracotta); text-decoration: underline;">account</a>.
+        Every unit in the building. Once you're approved, your phone
+        shows here by default &mdash; you can hide it from your
+        <a href="/account.html" style="color: var(--terracotta); text-decoration: underline;">account</a>,
+        or email <a href="mailto:admin@1400nsweetzer.com" style="color: var(--terracotta); text-decoration: underline;">admin@1400nsweetzer.com</a> if you're not signed up yet.
       </p>
     </header>
 
@@ -42,14 +44,14 @@
       const grid = document.getElementById('dirGrid');
       const { data: { session } } = await window.sb.auth.getSession();
       if (!session) return;
+      const meId = session.user.id;
 
-      // RLS automatically enforces:
-      //   - returns my own profile row, plus other approved residents
-      //     who haven't hidden their directory entry.
+      // Residents + linked profile (for Admin tag).
       const { data: rows, error } = await window.sb
-        .from('profiles')
-        .select('id, full_name, unit_number, phone, directory_visible, status, role')
-        .order('unit_number', { ascending: true });
+        .from('residents')
+        .select('id, unit_number, display_name, phone, is_board_member, occupancy_type, show_in_directory, show_phone, profile_id, sort_order, profile:profiles!residents_profile_id_fkey(role)')
+        .order('unit_number', { ascending: true })
+        .order('sort_order', { ascending: true });
 
       if (error) {
         mount(grid,
@@ -60,26 +62,27 @@
         return;
       }
 
-      // Filter to approved residents we should show. The "you" row
-      // (current user) is always present even if hidden.
-      const meId = session.user.id;
-      const visible = (rows || []).filter((r) =>
-        r.id === meId || (r.status === 'approved' && r.directory_visible)
-      );
+      // RLS already filters for us, but "me" is always visible even if hidden.
+      const visible = (rows || []).filter((r) => r.show_in_directory || r.profile_id === meId);
 
       if (visible.length === 0) {
         mount(grid,
           el('div', { class: 'empty' },
             el('div', { class: 'empty__title', text: 'No neighbors listed yet' }),
-            el('p', {
-              class: 'empty__sub',
-              text: 'As residents sign up and get approved, they\u2019ll appear here.',
-            }),
+            el('p', { class: 'empty__sub', text: 'The roster will appear here once it\u2019s seeded.' }),
           ));
         return;
       }
 
       grid.className = 'dir-grid';
+
+      const fmtPhone = (p) => {
+        if (!p) return null;
+        const d = String(p).replace(/[^\d]/g, '');
+        const ten = d.length === 11 && d.startsWith('1') ? d.slice(1) : d;
+        if (ten.length !== 10) return p;
+        return `${ten.slice(0, 3)}-${ten.slice(3, 6)}-${ten.slice(6)}`;
+      };
 
       const phoneIcon = () => {
         const NS = 'http://www.w3.org/2000/svg';
@@ -95,21 +98,49 @@
         return svg;
       };
 
-      const cards = visible.map((r, idx) => {
-        const isMe = r.id === meId;
-        const phoneHref = r.phone ? 'tel:' + String(r.phone).replace(/[^+\d]/g, '') : null;
-        return el('article', {
+      // Group rows by unit preserving order.
+      const unitMap = new Map();
+      for (const r of visible) {
+        if (!unitMap.has(r.unit_number)) unitMap.set(r.unit_number, []);
+        unitMap.get(r.unit_number).push(r);
+      }
+
+      const renderTags = (r) => {
+        const tags = [];
+        if (r.is_board_member) tags.push(el('span', { class: 'dir-tag dir-tag--board', text: 'Board' }));
+        if (r.occupancy_type === 'tenant') tags.push(el('span', { class: 'dir-tag dir-tag--tenant', text: 'Tenant' }));
+        if (r.profile && r.profile.role === 'admin') tags.push(el('span', { class: 'dir-tag dir-tag--admin', text: 'Admin' }));
+        if (r.profile_id) tags.push(el('span', { class: 'dir-tag dir-tag--registered', text: 'Registered' }));
+        if (r.profile_id === meId) tags.push(el('span', { class: 'dir-card__you', text: 'That\u2019s you' }));
+        return tags;
+      };
+
+      const cards = [];
+      let idx = 0;
+      for (const [unit, people] of unitMap) {
+        const rows = people.map((r) => {
+          const phoneShown = r.phone && r.show_phone;
+          const phoneFmt = phoneShown ? fmtPhone(r.phone) : null;
+          const phoneHref = phoneShown ? 'tel:' + String(r.phone).replace(/[^+\d]/g, '') : null;
+          return el('div', { class: 'dir-person' },
+            el('div', { class: 'dir-person__name' },
+              el('span', { text: r.display_name || 'Unnamed resident' }),
+              ...renderTags(r),
+            ),
+            phoneShown
+              ? el('a', { class: 'dir-card__phone', href: phoneHref }, phoneIcon(), phoneFmt)
+              : null,
+          );
+        });
+        cards.push(el('article', {
             class: 'card dir-card liquid-glass rise',
             style: { animationDelay: `${0.10 + idx * 0.05}s` },
           },
-          el('div', { class: 'dir-card__unit', text: r.unit_number || '—' }),
-          el('div', { class: 'dir-card__name', text: r.full_name || 'Unnamed resident' }),
-          r.phone
-            ? el('a', { class: 'dir-card__phone', href: phoneHref }, phoneIcon(), r.phone)
-            : null,
-          isMe ? el('span', { class: 'dir-card__you', text: 'That\u2019s you' }) : null,
-        );
-      });
+          el('div', { class: 'dir-card__unit', text: unit }),
+          ...rows,
+        ));
+        idx += 1;
+      }
 
       mount(grid, ...cards);
     })();

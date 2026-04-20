@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=7" />
+  <link rel="stylesheet" href="/assets/styles.css?v=8" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="page">
@@ -47,13 +47,26 @@
       </div>
 
       <label class="toggle">
-        <input id="directory_visible" type="checkbox" />
+        <input id="show_in_directory" type="checkbox" />
         <div class="toggle__label">
           <span class="toggle__title">Show me in the directory</span>
-          <span class="toggle__hint">Other approved residents can see your unit and phone. Off means you're hidden.</span>
+          <span class="toggle__hint">Approved residents see your unit and name. Off means you're hidden.</span>
         </div>
         <span class="toggle__switch" aria-hidden="true"></span>
       </label>
+
+      <label class="toggle">
+        <input id="show_phone" type="checkbox" />
+        <div class="toggle__label">
+          <span class="toggle__title">Show my phone</span>
+          <span class="toggle__hint">Your name still appears when this is off; just the phone stays hidden.</span>
+        </div>
+        <span class="toggle__switch" aria-hidden="true"></span>
+      </label>
+
+      <p id="notLinkedHint" class="toggle__hint" style="display:none; margin-top: -6px;">
+        These toggles activate once an admin links your account to the directory.
+      </p>
 
       <label class="toggle">
         <input id="email_news_optin" type="checkbox" />
@@ -90,47 +103,71 @@
     (async () => {
       const f = document.getElementById('accountForm');
       const status = document.getElementById('status');
+      const notLinkedHint = document.getElementById('notLinkedHint');
 
       const { data: { session } } = await window.sb.auth.getSession();
       if (!session) return;
 
-      const { data: profile, error } = await window.sb
-        .from('profiles')
-        .select('full_name, unit_number, phone, directory_visible, email_news_optin')
-        .eq('id', session.user.id)
-        .single();
+      const [profileRes, residentRes] = await Promise.all([
+        window.sb.from('profiles')
+          .select('full_name, unit_number, phone, email_news_optin')
+          .eq('id', session.user.id).single(),
+        window.sb.from('residents')
+          .select('id, show_in_directory, show_phone')
+          .eq('profile_id', session.user.id).maybeSingle(),
+      ]);
 
-      if (error) {
-        status.textContent = 'Couldn\u2019t load your profile: ' + error.message;
+      if (profileRes.error) {
+        status.textContent = 'Couldn\u2019t load your profile: ' + profileRes.error.message;
         return;
       }
+      const profile = profileRes.data;
+      const resident = residentRes.data; // may be null if admin hasn't linked yet
 
-      // Populate fields. textContent for the disabled email so we don't
-      // even put it in a value attribute that gets re-serialized.
       f.email.value = session.user.email || '';
       f.full_name.value = profile?.full_name || '';
       f.unit_number.value = profile?.unit_number || '';
       f.phone.value = profile?.phone || '';
-      f.directory_visible.checked = profile?.directory_visible !== false;
       f.email_news_optin.checked = profile?.email_news_optin !== false;
+
+      if (resident) {
+        f.show_in_directory.checked = resident.show_in_directory !== false;
+        f.show_phone.checked = resident.show_phone !== false;
+      } else {
+        f.show_in_directory.checked = true;
+        f.show_phone.checked = true;
+        f.show_in_directory.disabled = true;
+        f.show_phone.disabled = true;
+        notLinkedHint.style.display = 'block';
+      }
 
       f.addEventListener('submit', async (e) => {
         e.preventDefault();
         status.textContent = 'Saving…';
-        const update = {
+
+        const profileUpdate = {
           full_name: f.full_name.value.trim(),
           unit_number: f.unit_number.value.trim(),
           phone: f.phone.value.trim(),
-          directory_visible: f.directory_visible.checked,
           email_news_optin: f.email_news_optin.checked,
         };
-        const { error: upErr } = await window.sb
-          .from('profiles')
-          .update(update)
-          .eq('id', session.user.id);
-        status.textContent = upErr
-          ? 'Couldn\u2019t save: ' + upErr.message
-          : 'Saved \u2713';
+
+        const { error: pErr } = await window.sb
+          .from('profiles').update(profileUpdate).eq('id', session.user.id);
+        if (pErr) { status.textContent = 'Couldn\u2019t save profile: ' + pErr.message; return; }
+
+        if (resident) {
+          const { error: rErr } = await window.sb
+            .from('residents')
+            .update({
+              show_in_directory: f.show_in_directory.checked,
+              show_phone: f.show_phone.checked,
+            })
+            .eq('id', resident.id);
+          if (rErr) { status.textContent = 'Profile saved, but couldn\u2019t save directory prefs: ' + rErr.message; return; }
+        }
+
+        status.textContent = 'Saved \u2713';
       });
 
       document.getElementById('signOutBtn').addEventListener('click', async () => {
