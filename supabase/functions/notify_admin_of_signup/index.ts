@@ -11,7 +11,7 @@
 //   RESEND_API_KEY
 //   FROM_EMAIL
 //   FROM_NAME                    (defaults to "Sunset Penthouse")
-//   SITE_URL                     (defaults to https://1400sweetzer.com)
+//   SITE_URL                     (defaults to https://1400nsweetzer.com)
 //   PROFILES_WEBHOOK_SECRET      shared secret with the DB webhook
 //   ADMIN_NOTIFY_EMAIL           optional extra recipient (shared inbox)
 
@@ -23,7 +23,7 @@ const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const FROM_EMAIL       = Deno.env.get('FROM_EMAIL') || 'onboarding@resend.dev';
 const FROM_NAME        = Deno.env.get('FROM_NAME')  || 'Sunset Penthouse';
-const SITE_URL         = (Deno.env.get('SITE_URL') || 'https://1400sweetzer.com').replace(/\/$/, '');
+const SITE_URL         = (Deno.env.get('SITE_URL') || 'https://1400nsweetzer.com').replace(/\/$/, '');
 const WEBHOOK_SECRET   = Deno.env.get('PROFILES_WEBHOOK_SECRET')!;
 const ADMIN_NOTIFY     = (Deno.env.get('ADMIN_NOTIFY_EMAIL') || '').trim();
 

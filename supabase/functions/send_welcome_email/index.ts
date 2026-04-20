@@ -16,7 +16,7 @@ const SUPABASE_ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE_ROLE_KEY  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const FROM_EMAIL        = Deno.env.get('FROM_EMAIL') || 'onboarding@resend.dev';
 const FROM_NAME         = Deno.env.get('FROM_NAME')  || 'Sunset Penthouse';
-const SITE_URL          = (Deno.env.get('SITE_URL') || 'https://1400sweetzer.com').replace(/\/$/, '');
+const SITE_URL          = (Deno.env.get('SITE_URL') || 'https://1400nsweetzer.com').replace(/\/$/, '');
 
 const cors = {
   'Access-Control-Allow-Origin':  '*',
