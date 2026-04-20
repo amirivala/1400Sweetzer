@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Roster · Admin · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css?v=8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Admin · Roster</span>
+      <h1 class="page-header__title">Who's on the roster.</h1>
+      <p class="page-header__sub">
+        The master list of everyone in the building, whether or not
+        they've signed up. Add new residents, edit contact info, flag
+        board members, unlink a mis-matched account.
+      </p>
+    </header>
+
+    <section class="admin-list" style="margin-bottom: 20px;">
+      <button id="addBtn" type="button" class="cta cta--solid">+ Add roster entry</button>
+    </section>
+
+    <section id="rosterList" class="admin-list" aria-live="polite">
+      <div class="empty"><div class="empty__title">Loading…</div></div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/admin-guard.js"></script>
+  <script src="/assets/page-shell.js?v=7"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const list = document.getElementById('rosterList');
+      const addBtn = document.getElementById('addBtn');
+
+      const load = async () => {
+        const { data, error } = await window.sb
+          .from('residents')
+          .select('id, unit_number, display_name, phone, is_board_member, occupancy_type, show_in_directory, show_phone, profile_id, sort_order, notes')
+          .order('unit_number', { ascending: true })
+          .order('sort_order', { ascending: true });
+
+        if (error) {
+          mount(list, el('div', { class: 'empty' },
+            el('div', { class: 'empty__title', text: 'Trouble loading roster' }),
+            el('p', { class: 'empty__sub', text: error.message }),
+          ));
+          return;
+        }
+
+        const rows = (data || []).map((r) => {
+          return el('article', { class: 'card liquid-glass admin-row' },
+            el('div', { class: 'admin-row__main' },
+              el('div', { class: 'admin-row__title', text: `Unit ${r.unit_number} · ${r.display_name}` }),
+              el('div', { class: 'admin-row__meta' },
+                r.phone ? el('span', { text: r.phone }) : null,
+                el('span', { class: 'admin-status-pill', text: r.occupancy_type }),
+                r.is_board_member ? el('span', { class: 'admin-status-pill admin-status-pill--admin', text: 'board' }) : null,
+                r.profile_id ? el('span', { class: 'admin-status-pill admin-status-pill--approved', text: 'claimed' }) : null,
+                !r.show_in_directory ? el('span', { class: 'admin-status-pill', text: 'hidden' }) : null,
+                !r.show_phone && r.show_in_directory ? el('span', { class: 'admin-status-pill', text: 'phone hidden' }) : null,
+              ),
+            ),
+            el('div', { class: 'admin-row__actions' },
+              el('button', {
+                class: 'btn-mini', type: 'button', text: 'Edit',
+                onclick: () => openEditor(r),
+              }),
+              r.profile_id
+                ? el('button', {
+                    class: 'btn-mini', type: 'button', text: 'Unlink',
+                    onclick: async () => {
+                      if (!confirm(`Unlink ${r.display_name} from their account? Their login still works; they just stop showing as "claimed."`)) return;
+                      const { error: uErr } = await window.sb.from('residents').update({ profile_id: null }).eq('id', r.id);
+                      if (uErr) { alert('Couldn\u2019t unlink: ' + uErr.message); return; }
+                      load();
+                    },
+                  })
+                : null,
+              el('button', {
+                class: 'btn-mini btn-mini--danger', type: 'button', text: 'Delete',
+                onclick: async () => {
+                  const warn = r.profile_id
+                    ? `WARNING: ${r.display_name} is linked to a logged-in user. Delete anyway? (Consider Unlink instead.)`
+                    : `Delete ${r.display_name}?`;
+                  if (!confirm(warn)) return;
+                  const { error: dErr } = await window.sb.from('residents').delete().eq('id', r.id);
+                  if (dErr) { alert('Couldn\u2019t delete: ' + dErr.message); return; }
+                  load();
+                },
+              }),
+            ),
+          );
+        });
+
+        mount(list, ...rows);
+      };
+
+      const openEditor = (r) => {
+        // r may be null for a new row.
+        const isNew = !r;
+        const unit = prompt('Unit number', r?.unit_number || '');
+        if (unit === null) return;
+        const name = prompt('Display name', r?.display_name || '');
+        if (name === null) return;
+        const phone = prompt('Phone (E.164, e.g. +13105551234)', r?.phone || '');
+        if (phone === null) return;
+        const occ = prompt('Occupancy (owner | tenant)', r?.occupancy_type || 'owner');
+        if (occ === null || (occ !== 'owner' && occ !== 'tenant')) {
+          if (occ !== null) alert('Occupancy must be owner or tenant.');
+          return;
+        }
+        const board = confirm('Is this a board member? (OK = yes, Cancel = no)');
+        const visible = confirm('Show in directory? (OK = yes, Cancel = no)');
+        const phoneVisible = confirm('Show phone? (OK = yes, Cancel = no)');
+
+        const row = {
+          unit_number: unit.trim(),
+          display_name: name.trim(),
+          phone: phone.trim() || null,
+          occupancy_type: occ,
+          is_board_member: board,
+          show_in_directory: visible,
+          show_phone: phoneVisible,
+        };
+
+        (async () => {
+          if (isNew) {
+            const { error: iErr } = await window.sb.from('residents').insert(row);
+            if (iErr) { alert('Couldn\u2019t create: ' + iErr.message); return; }
+          } else {
+            const { error: uErr } = await window.sb.from('residents').update(row).eq('id', r.id);
+            if (uErr) { alert('Couldn\u2019t save: ' + uErr.message); return; }
+          }
+          load();
+        })();
+      };
+
+      addBtn.addEventListener('click', () => openEditor(null));
+      load();
+    })();
+  </script>
+</body>
+</html>
