@@ -16,7 +16,12 @@ Then visit `http://localhost:8000`.
 
 ## Deployment
 
-Pushes to `main` auto-deploy to Cloudflare Pages.
+Hosted on Vercel at [1400nsweetzer.com](https://1400nsweetzer.com). Pushes to
+`main` auto-deploy. The project is a pure static site — no build step. Security
+headers and asset cache policy live in `vercel.json`.
+
+Environment-specific configuration (Supabase URL + publishable key) is in
+`/assets/env.js` and is **safe to commit** (RLS enforces access).
 
 ## Bootstrap (one-time)
 

@@ -1,0 +1,4 @@
+# Sunset Penthouse is a private resident portal.
+# Nothing here should be indexed by search engines.
+User-agent: *
+Disallow: /
