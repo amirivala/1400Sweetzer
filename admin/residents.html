@@ -91,9 +91,13 @@
               body: JSON.stringify({ profile_id: profileId }),
             },
           );
-          const payload = await res.json().catch(() => ({}));
+          const text = await res.text();
+          let payload = {};
+          try { payload = text ? JSON.parse(text) : {}; } catch (_) { /* non-JSON error body */ }
           if (!res.ok || !payload.ok) {
-            alert('Couldn\u2019t remove: ' + (payload.detail || payload.reason || res.statusText));
+            const detail = payload.detail || payload.reason || text || `HTTP ${res.status}`;
+            console.error('admin_delete_user failed', res.status, text);
+            alert('Couldn\u2019t remove (' + res.status + '): ' + detail);
             return null;
           }
           if (payload.mode === 'soft_remove') {
@@ -101,6 +105,7 @@
           }
           return payload.mode;
         } catch (e) {
+          console.error('admin_delete_user error', e);
           alert('Couldn\u2019t remove: ' + (e?.message || e));
           return null;
         }

@@ -71,14 +71,22 @@
 
       const { error } = await window.sb.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${location.origin}/auth/callback.html` },
+        options: {
+          emailRedirectTo: `${location.origin}/auth/callback.html`,
+          shouldCreateUser: false,
+        },
       });
 
       button.disabled = false;
       button.style.opacity = '';
 
       if (error) {
-        status.textContent = `Couldn't send: ${error.message}`;
+        // Supabase returns a generic "Signups not allowed for otp" when
+        // shouldCreateUser is false and the email isn't registered.
+        const msg = /signups? not allowed/i.test(error.message || '')
+          ? "No account for that email. If you're new, request access first."
+          : `Couldn't send: ${error.message}`;
+        status.textContent = msg;
       } else {
         status.textContent = `Sent. Check your inbox at ${email}.`;
         button.querySelector('span').textContent = 'Sent ✓';
