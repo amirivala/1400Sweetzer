@@ -8,7 +8,7 @@
 
 ## Problem
 
-Today `directory.html` reads directly from the `profiles` table. A `profiles` row only exists if a user has signed up via Supabase Auth, so the directory is effectively a list of self-service registered users — a small subset of the 28 people across 26 units who actually live here. This makes the page look empty, and it mixes two very different concerns (the official HOA roster vs. who happens to have made an account).
+Today `directory.html` reads directly from the `profiles` table. A `profiles` row only exists if a user has signed up via Supabase Auth, so the directory is effectively a list of self-service registered users — a small subset of the ~31 people across 24 units who actually live here (the HOA roster, see `00014_seed_residents.sql` for the exact breakdown). This makes the page look empty, and it mixes two very different concerns (the official HOA roster vs. who happens to have made an account).
 
 We also have no way to show identity tags that matter to the community — Board Member, Owner vs. Tenant, Admin, Registered — because some of those facts aren't expressible on a `profiles` row at all.
 
@@ -92,7 +92,7 @@ Each tag the directory displays maps to exactly one source:
 
 ## Seed strategy
 
-A one-time migration inserts 28 rows from the PDF. Rules:
+A one-time migration inserts 31 rows from the PDF (one row per person per unit). Rules:
 
 **Couples on one line become two rows sharing a phone:**
 - `(202)` "Leonard & Rosemary Zir" → `Leonard Zir` + `Rosemary Zir`, phone `+15086557223`.
