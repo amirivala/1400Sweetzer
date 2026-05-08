@@ -18,6 +18,8 @@
     { href: '/calendar.html',  label: 'Calendar' },
     { href: '/directory.html', label: 'Directory' },
     { href: '/providers.html', label: 'Providers' },
+    { href: '/documents.html', label: 'Docs' },
+    { href: '/history.html',   label: 'History' },
   ];
 
   const path = location.pathname.replace(/\/$/, '') || '/index.html';

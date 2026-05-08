@@ -919,6 +919,312 @@ button { background: none; border: 0; cursor: pointer; }
 }
 .auth-foot a { color: var(--paper-mute); border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 1px; }
 
+/* Public landing — small "Our history" link below the CTA row. */
+.hero-quiet-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 1.6rem;
+  padding: 0.4rem 0.2rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper-mute);
+  text-decoration: none;
+  transition: color 0.18s var(--ease), gap 0.2s var(--ease);
+}
+.hero-quiet-link:hover { color: var(--paper); gap: 0.7rem; }
+.hero-quiet-link svg { transition: transform 0.2s var(--ease); }
+
+/* ---------- Documents page ----------------------------------- */
+.docs-list {
+  display: grid;
+  gap: 0.7rem;
+  margin-top: 1.6rem;
+}
+.doc-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.2rem;
+  border-radius: 14px;
+  text-decoration: none;
+  color: var(--paper);
+  transition: transform 0.18s var(--ease), background 0.2s var(--ease);
+}
+.doc-row:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.06);
+}
+.doc-row:hover .doc-row__arrow { transform: translateY(2px); }
+.doc-row__type {
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--paper);
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  min-width: 3.4rem;
+  text-align: center;
+}
+.doc-row__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+}
+.doc-row__title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 1.15rem;
+  line-height: 1.18;
+  color: var(--paper);
+}
+.doc-row__note {
+  font-size: 0.83rem;
+  color: var(--paper-mute);
+  font-weight: 300;
+}
+.doc-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--paper-mute);
+  white-space: nowrap;
+}
+.doc-row__size { text-transform: uppercase; }
+.doc-row__arrow {
+  color: var(--paper);
+  transition: transform 0.18s var(--ease);
+}
+@media (max-width: 540px) {
+  .doc-row { grid-template-columns: auto 1fr; gap: 0.5rem 1rem; }
+  .doc-row__meta { grid-column: 1 / -1; justify-content: flex-end; }
+}
+
+/* ---------- History page (public) ---------------------------- */
+.hist-shell {
+  position: relative;
+  min-height: 100svh;
+  background:
+    radial-gradient(ellipse at 25% 0%, #1c1611 0%, #0a0807 70%),
+    #0a0807;
+  color: var(--paper);
+  isolation: isolate;
+  overflow-x: hidden;
+}
+.hist-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 0.05 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  z-index: 0;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.hist-top {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem clamp(1rem, 4vw, 3rem);
+}
+.hist-top__nav {
+  display: flex;
+  align-items: center;
+  gap: 1.3rem;
+}
+.hist-top__home {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper-mute);
+  text-decoration: none;
+  transition: color 0.18s var(--ease);
+}
+.hist-top__home:hover { color: var(--paper); }
+.hist-top__signin {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 1.05rem 0.55rem 1.15rem;
+  border-radius: var(--radius-pill);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.18s var(--ease);
+}
+.hist-top__signin:hover { background: #fff; }
+.hist-top__signin svg { transition: transform 0.2s var(--ease); }
+.hist-top__signin:hover svg { transform: translate(2px, -2px); }
+
+.hist-main {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: clamp(2rem, 5vw, 4.5rem) clamp(1rem, 4vw, 3rem) 5rem;
+}
+
+.hist-hero {
+  text-align: center;
+  padding: 1rem 0 3.5rem;
+}
+.hist-hero__kicker {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--paper-mute);
+  padding: 0.5rem 0.95rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  margin-bottom: 1.6rem;
+}
+.hist-hero__title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(2.6rem, 4vw + 1.6rem, 5.6rem);
+  line-height: 0.95;
+  letter-spacing: -0.025em;
+  color: var(--paper);
+  margin: 0 0 1.4rem;
+}
+.hist-hero__title em {
+  font-style: italic;
+  color: var(--paper-mute);
+  font-size: 0.62em;
+  letter-spacing: 0;
+}
+.hist-hero__lede {
+  max-width: 580px;
+  margin: 0 auto;
+  font-size: clamp(1rem, 0.4vw + 0.9rem, 1.13rem);
+  line-height: 1.6;
+  color: var(--paper-mute);
+  font-weight: 300;
+}
+.hist-hero__lede em { font-style: italic; color: var(--paper); }
+
+.hist-chapter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: center;
+  margin-top: clamp(3rem, 6vw, 5.5rem);
+}
+.hist-chapter--reverse .hist-clipping { order: 2; }
+@media (max-width: 760px) {
+  .hist-chapter { grid-template-columns: 1fr; gap: 1.6rem; }
+  .hist-chapter--reverse .hist-clipping { order: 0; }
+}
+
+.hist-clipping {
+  margin: 0;
+  padding: 1.1rem 1.1rem 0.9rem;
+  background: #f4ead6;
+  border-radius: 5px;
+  box-shadow:
+    0 2px 0 rgba(0,0,0,0.05),
+    0 30px 60px -20px rgba(0,0,0,0.55),
+    0 14px 30px -8px rgba(0,0,0,0.4);
+  transform: rotate(-0.6deg);
+  transition: transform 0.4s var(--ease-out);
+}
+.hist-chapter--reverse .hist-clipping { transform: rotate(0.6deg); }
+.hist-clipping:hover { transform: rotate(0deg) translateY(-2px); }
+.hist-clipping img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 2px;
+  filter: contrast(1.04) brightness(0.98);
+}
+.hist-clipping figcaption {
+  margin-top: 0.7rem;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #6b5e4a;
+  text-align: center;
+}
+
+.hist-chapter__title {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 400;
+  font-size: clamp(1.6rem, 1vw + 1.4rem, 2.4rem);
+  line-height: 1.05;
+  color: var(--paper);
+  margin: 0 0 1.1rem;
+  letter-spacing: -0.01em;
+}
+.hist-chapter__copy p {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--paper-mute);
+  font-weight: 300;
+  margin: 0 0 1rem;
+}
+.hist-chapter__copy strong {
+  color: var(--paper);
+  font-weight: 500;
+}
+.hist-chapter__copy blockquote {
+  margin: 1.3rem 0 0;
+  padding: 0.4rem 0 0.4rem 1.1rem;
+  border-left: 2px solid rgba(255,255,255,0.18);
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 1.05rem;
+  color: var(--paper);
+  line-height: 1.55;
+}
+.hist-chapter__copy blockquote cite {
+  display: block;
+  margin-top: 0.7rem;
+  font-family: var(--mono);
+  font-style: normal;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper-low);
+}
+
+.hist-foot {
+  margin-top: 5rem;
+  padding-top: 1.8rem;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--paper-low);
+}
+.hist-foot__group { display: flex; align-items: center; gap: 0.6rem; }
+.hist-foot__dot { color: var(--paper-low); }
+
 .auth-steps {
   list-style: none;
   padding: 0.9rem 1rem;
