@@ -21,6 +21,10 @@ const SUPABASE_URL       = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_ANON_KEY  = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE_ROLE_KEY   = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const FROM_EMAIL         = Deno.env.get('FROM_EMAIL')  || 'onboarding@resend.dev';
+// Replies from residents land at the board alias (forwarded by ImprovMX
+// to all current admins' personal inboxes). Override per-environment
+// via the BOARD_REPLY_TO secret in the Supabase dashboard.
+const REPLY_TO           = Deno.env.get('BOARD_REPLY_TO') || 'board@1400nsweetzer.com';
 const FROM_NAME          = Deno.env.get('FROM_NAME')   || 'Sunset Penthouse';
 const SITE_URL           = (Deno.env.get('SITE_URL')   || 'https://1400nsweetzer.com').replace(/\/$/, '');
 
@@ -296,6 +300,7 @@ Deno.serve(async (req) => {
   const fromHeader = `${FROM_NAME} <${FROM_EMAIL}>`;
   const batch = recipients.map((to) => ({
     from: fromHeader,
+    reply_to: REPLY_TO,
     to,
     subject: post.title,
     html,

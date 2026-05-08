@@ -22,6 +22,11 @@ const RESEND_API_KEY   = Deno.env.get('RESEND_API_KEY')!;
 const SUPABASE_URL     = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const FROM_EMAIL       = Deno.env.get('FROM_EMAIL') || 'onboarding@resend.dev';
+// Even though this email goes TO admins, we still set Reply-To to the
+// board alias so admins replying with each other stay on a single
+// thread instead of forking by personal inbox. Override per-environment
+// via the BOARD_REPLY_TO secret in the Supabase dashboard.
+const REPLY_TO         = Deno.env.get('BOARD_REPLY_TO') || 'board@1400nsweetzer.com';
 const FROM_NAME        = Deno.env.get('FROM_NAME')  || 'Sunset Penthouse';
 const SITE_URL         = (Deno.env.get('SITE_URL') || 'https://1400nsweetzer.com').replace(/\/$/, '');
 const WEBHOOK_SECRET   = Deno.env.get('PROFILES_WEBHOOK_SECRET')!;
@@ -152,7 +157,7 @@ Deno.serve(async (req) => {
 
   const fromHeader = `${FROM_NAME} <${FROM_EMAIL}>`;
   const batch = recipients.map((to) => ({
-    from: fromHeader, to, subject, html, text,
+    from: fromHeader, reply_to: REPLY_TO, to, subject, html, text,
   }));
 
   const resendRes = await fetch('https://api.resend.com/emails/batch', {
