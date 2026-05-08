@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=8" />
+  <link rel="stylesheet" href="/assets/styles.css?v=9" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="auth-shell">
@@ -21,7 +21,14 @@
     </div>
 
     <h1 class="auth-title">Request access.</h1>
-    <p class="auth-sub">A board member will approve your account. You'll get an email when you're in.</p>
+    <p class="auth-sub">Residents only. A board member will approve your account — here's how it works.</p>
+
+    <ol class="auth-steps" aria-label="Request access process">
+      <li><span class="step-num">1</span><span>Submit this form with your name, unit, phone, and email.</span></li>
+      <li><span class="step-num">2</span><span>Click the verification link we email you to confirm your address.</span></li>
+      <li><span class="step-num">3</span><span>A board member reviews your request — usually within a day.</span></li>
+      <li><span class="step-num">4</span><span>We email you when you're approved. Sign in any time after.</span></li>
+    </ol>
 
     <form id="signupForm" novalidate>
       <div class="field">
@@ -63,13 +70,35 @@
     const form = document.getElementById('signupForm');
     const status = document.getElementById('status');
     const button = form.querySelector('button[type="submit"]');
+    const emailInput = document.getElementById('email');
+
+    // Pre-fill last-used email so the form is mostly filled on return visits.
+    const lastEmail = localStorage.getItem('sp_last_email');
+    if (lastEmail) emailInput.value = lastEmail;
+
+    // If we already have an approved session, skip straight home; if pending, say so.
+    (async () => {
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+      const { data: profile } = await window.sb
+        .from('profiles')
+        .select('status')
+        .eq('id', session.user.id)
+        .single();
+      if (profile?.status === 'approved') {
+        status.textContent = "You're already signed in. Taking you home\u2026";
+        setTimeout(() => (location.href = '/home.html'), 350);
+      } else if (profile?.status === 'pending') {
+        status.textContent = "We already have your request on file. A board member will approve you shortly.";
+      }
+    })();
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const full_name   = document.getElementById('full_name').value.trim();
       const unit_number = document.getElementById('unit_number').value.trim();
       const phone       = document.getElementById('phone').value.trim();
-      const email       = document.getElementById('email').value.trim();
+      const email       = emailInput.value.trim();
       if (!full_name || !unit_number || !phone || !email) {
         status.textContent = 'All fields are required.';
         return;

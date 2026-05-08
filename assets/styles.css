@@ -902,6 +902,40 @@ button { background: none; border: 0; cursor: pointer; }
 }
 .auth-foot a { color: var(--paper-mute); border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 1px; }
 
+.auth-steps {
+  list-style: none;
+  padding: 0.9rem 1rem;
+  margin: 0 0 1.4rem;
+  display: grid;
+  gap: 0.6rem;
+  border-radius: var(--radius-lg, 14px);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.auth-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.7rem;
+  font-size: 0.86rem;
+  font-weight: 300;
+  line-height: 1.45;
+  color: var(--paper-mute);
+}
+.auth-steps .step-num {
+  flex: none;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: var(--mono);
+  font-size: 0.65rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--paper);
+  margin-top: 0.05rem;
+}
+
 /* ---------- Motion ---------------------------------------- */
 @keyframes blur-in {
   from { filter: blur(14px); opacity: 0; transform: translateY(20px); }

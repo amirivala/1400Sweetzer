@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=8" />
+  <link rel="stylesheet" href="/assets/styles.css?v=9" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="auth-shell">
@@ -21,7 +21,7 @@
     </div>
 
     <h1 class="auth-title">Sign in.</h1>
-    <p class="auth-sub">A one-tap link will arrive in your inbox. No password to remember.</p>
+    <p class="auth-sub">A one-tap link will arrive in your inbox. No password to remember — and we'll keep you signed in on this device.</p>
 
     <form id="signinForm" novalidate>
       <div class="field">
@@ -59,10 +59,32 @@
     const form = document.getElementById('signinForm');
     const status = document.getElementById('status');
     const button = form.querySelector('button[type="submit"]');
+    const emailInput = document.getElementById('email');
+
+    // Pre-fill last-used email so it's one tap to send another link.
+    const lastEmail = localStorage.getItem('sp_last_email');
+    if (lastEmail) emailInput.value = lastEmail;
+
+    // If we already have an approved session, skip straight home.
+    (async () => {
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+      const { data: profile } = await window.sb
+        .from('profiles')
+        .select('status')
+        .eq('id', session.user.id)
+        .single();
+      if (profile?.status === 'approved') {
+        status.textContent = "You're already signed in. Taking you home…";
+        setTimeout(() => (location.href = '/home.html'), 350);
+      } else if (profile?.status === 'pending') {
+        status.textContent = "You're on the list — a board member will approve you shortly.";
+      }
+    })();
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('email').value.trim();
+      const email = emailInput.value.trim();
       if (!email) return;
 
       button.disabled = true;
@@ -88,6 +110,7 @@
           : `Couldn't send: ${error.message}`;
         status.textContent = msg;
       } else {
+        localStorage.setItem('sp_last_email', email);
         status.textContent = `Sent. Check your inbox at ${email}.`;
         button.querySelector('span').textContent = 'Sent ✓';
       }
