@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=10" />
+  <link rel="stylesheet" href="/assets/styles.css?v=11" />
 
   <link rel="preload" as="image" href="/assets/building.jpg" fetchpriority="high" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -221,56 +221,115 @@
   <script src="/assets/supabase-client.js"></script>
   <script src="/assets/auth-guard.js"></script>
   <script>
+    // --- Synchronous nav hydrate from the localStorage cache --------
+    // After the first profile resolution we stash {firstName, isAdmin}
+    // in localStorage so subsequent page loads can render the pill in
+    // its final shape without waiting on the network. This eliminates
+    // the "Account → Amir" flash and the Admin-link layout jolt.
+    // Cache is wiped on sign-out by supabase-client.js.
+    const NAV_CACHE_KEY = 'sp_nav_cache_v1';
+    const navCache = (() => {
+      try { return JSON.parse(localStorage.getItem(NAV_CACHE_KEY) || 'null') || {}; }
+      catch { return {}; }
+    })();
+    const haveNavCache = !!navCache.firstName;
+    const cachedFirstName = navCache.firstName || 'Account';
+    const cachedIsAdmin = navCache.isAdmin === true;
+
+    const buildPillAdminLink = (animate) => {
+      const link = document.createElement('a');
+      link.className = 'nav-link' + (animate ? ' nav-link--enter' : '');
+      link.href = '/admin/index.html';
+      link.textContent = 'Admin';
+      return link;
+    };
+    const buildDrawerAdminLink = () => {
+      const link = document.createElement('a');
+      link.className = 'nav-drawer__link';
+      link.href = '/admin/index.html';
+      link.textContent = 'Admin ';
+      const chev = document.createElement('span');
+      chev.className = 'chev';
+      chev.setAttribute('aria-hidden', 'true');
+      chev.textContent = '→';
+      link.appendChild(chev);
+      return link;
+    };
+    const insertAdmin = (animate) => {
+      const accountBtn = document.getElementById('navAccount');
+      const pillLink = buildPillAdminLink(animate);
+      accountBtn.parentNode.insertBefore(pillLink, accountBtn);
+
+      const drawerInner = document.querySelector('#navDrawer .nav-drawer__inner');
+      const drawerFoot = drawerInner?.querySelector('.nav-drawer__foot');
+      if (drawerFoot) drawerInner.insertBefore(buildDrawerAdminLink(), drawerFoot);
+      return pillLink;
+    };
+    const removeAdmin = () => {
+      document.querySelector('.nav-pill a[href="/admin/index.html"]')?.remove();
+      document.querySelector('#navDrawer a[href="/admin/index.html"]')?.remove();
+    };
+
+    // Apply cached state synchronously, before paint settles.
+    document.getElementById('navName').textContent = cachedFirstName;
+    if (cachedIsAdmin) insertAdmin(false);
+
+    // Click the user-name pill → go to the account page (sign-out
+    // lives there, alongside profile + notification preferences).
+    document.getElementById('navAccount').addEventListener('click', () => {
+      location.href = '/account.html';
+    });
+
+    // Reveal the pill on the next paint when we have cache (the pill
+    // is already in its final shape). On first visits, defer the
+    // reveal until the live profile resolves so we don't fade in a
+    // placeholder ("Account") and then swap the text mid-transition.
+    const revealPill = () =>
+      requestAnimationFrame(() =>
+        document.querySelector('.nav-pill')?.classList.add('is-ready'));
+    if (haveNavCache) revealPill();
+
     (async () => {
       const { data: { session } } = await window.sb.auth.getSession();
       if (!session) return;
 
       const email = session.user.email || '';
 
-      let firstName = email.split('@')[0];
+      // --- Reconcile pill against the live profile ----------------
+      let liveFirstName = email.split('@')[0];
+      let liveIsAdmin = false;
       try {
         const { data: profile } = await window.sb
           .from('profiles')
-          .select('full_name')
+          .select('full_name, role')
           .eq('id', session.user.id)
           .single();
-        if (profile?.full_name) firstName = profile.full_name.split(' ')[0];
+        if (profile?.full_name) liveFirstName = profile.full_name.split(' ')[0];
+        liveIsAdmin = profile?.role === 'admin';
+      } catch { /* fall back to email handle, non-admin */ }
+
+      if (liveFirstName !== cachedFirstName) {
+        document.getElementById('navName').textContent = liveFirstName;
+      }
+      if (liveIsAdmin !== cachedIsAdmin) {
+        if (liveIsAdmin) {
+          const link = insertAdmin(true);
+          // Two rAFs so the opacity:0 frame paints before .is-ready flips
+          // it to 1 — otherwise the transition can be skipped.
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => link.classList.add('is-ready')));
+        } else {
+          removeAdmin();
+        }
+      }
+
+      try {
+        localStorage.setItem(NAV_CACHE_KEY,
+          JSON.stringify({ firstName: liveFirstName, isAdmin: liveIsAdmin }));
       } catch {}
 
-      // Personalize the nav label only — the hero headline stays
-      // a clean two-line "Welcome / to Sunset Penthouse."
-      document.getElementById('navName').textContent = firstName;
-
-      // If this user is an admin, slip an "Admin" link in just before
-      // the user-name button in the nav pill, and mirror it in the
-      // mobile drawer above the address footer.
-      try {
-        const { data: roleRow } = await window.sb
-          .from('profiles').select('role').eq('id', session.user.id).single();
-        if (roleRow?.role === 'admin') {
-          const accountBtn = document.getElementById('navAccount');
-          const adminLink = document.createElement('a');
-          adminLink.className = 'nav-link';
-          adminLink.href = '/admin/index.html';
-          adminLink.textContent = 'Admin';
-          accountBtn.parentNode.insertBefore(adminLink, accountBtn);
-
-          const drawerInner = document.querySelector('#navDrawer .nav-drawer__inner');
-          const drawerFoot = drawerInner?.querySelector('.nav-drawer__foot');
-          if (drawerFoot) {
-            const drawerAdmin = document.createElement('a');
-            drawerAdmin.className = 'nav-drawer__link';
-            drawerAdmin.href = '/admin/index.html';
-            drawerAdmin.textContent = 'Admin ';
-            const chev = document.createElement('span');
-            chev.className = 'chev';
-            chev.setAttribute('aria-hidden', 'true');
-            chev.textContent = '→';
-            drawerAdmin.appendChild(chev);
-            drawerInner.insertBefore(drawerAdmin, drawerFoot);
-          }
-        }
-      } catch { /* non-fatal */ }
+      // First visit: reveal now, with the live values stamped in.
+      if (!haveNavCache) revealPill();
 
       // Today's date pill
       const d = new Date();
@@ -298,12 +357,6 @@
           pill.hidden = false;
         }
       } catch {}
-
-      // Click the user-name pill → go to the account page (sign-out
-      // lives there, alongside profile + notification preferences).
-      document.getElementById('navAccount').addEventListener('click', () => {
-        location.href = '/account.html';
-      });
     })();
   </script>
 </body>

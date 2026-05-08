@@ -396,6 +396,23 @@ button { background: none; border: 0; cursor: pointer; }
 .nav-cta svg    { transition: transform 0.2s var(--ease); }
 .nav-cta:hover svg { transform: translate(2px, -2px); }
 
+/* Nav-pill hydrate fade-in. The user-name button starts invisible so
+   we don't flash a placeholder ("Account") before JS stamps in the
+   cached/live first name. Same treatment for the Admin link when it
+   gets injected post-fetch. .is-ready is toggled on the next paint
+   after the cache (or live profile) settles content, triggering the
+   fade. Net effect: no "Account → Amir" pop, no Admin-link jolt. */
+.nav-pill .nav-cta {
+  opacity: 0;
+  transition: opacity 0.32s var(--ease-out);
+}
+.nav-pill.is-ready .nav-cta { opacity: 1; }
+.nav-link--enter {
+  opacity: 0;
+  transition: opacity 0.32s var(--ease-out);
+}
+.nav-link--enter.is-ready { opacity: 1; }
+
 /* Mobile hamburger — hidden on desktop, shown on phones in place of the
    full nav-link list. Three absolutely-positioned bars converge at
    center on open, top & bottom rotating 45°/-45° to form a crisp X.

@@ -139,9 +139,28 @@
     return e('a', props);
   });
 
+  // --- Synchronous nav cache --------------------------------------
+  // After the first profile resolution we stash {firstName, isAdmin}
+  // in localStorage so subsequent page loads can render the pill in
+  // its final shape without waiting on the network. This eliminates
+  // the "Account → Amir" flash and the Admin-link layout jolt.
+  // Cache is wiped on sign-out by supabase-client.js.
+  const NAV_CACHE_KEY = 'sp_nav_cache_v1';
+  const readNavCache = () => {
+    try { return JSON.parse(localStorage.getItem(NAV_CACHE_KEY) || 'null'); }
+    catch { return null; }
+  };
+  const writeNavCache = (data) => {
+    try { localStorage.setItem(NAV_CACHE_KEY, JSON.stringify(data)); } catch {}
+  };
+  const navCache = readNavCache() || {};
+  const haveNavCache = !!navCache.firstName;
+  const cachedFirstName = navCache.firstName || 'Account';
+  const cachedIsAdmin = navCache.isAdmin === true;
+
   const accountBtn = e('button',
     { class: 'nav-cta', id: 'navAccount', type: 'button', 'aria-label': 'Your account' },
-    e('span', { id: 'navName', text: 'Account' }),
+    e('span', { id: 'navName', text: cachedFirstName }),
     arrowIcon(),
   );
 
@@ -188,55 +207,93 @@
       e('div', { class: 'nav-drawer__foot', text: '1400 N Sweetzer Ave · West Hollywood' }),
     ));
 
+  // Helpers to add/remove the Admin link in both pill and drawer.
+  // `animate` adds .nav-link--enter so post-load insertions fade in
+  // instead of popping into place.
+  const adminPath = path.startsWith('/admin/');
+  const insertAdminLink = (animate) => {
+    const adminLink = e('a', {
+      class: 'nav-link' + (animate ? ' nav-link--enter' : ''),
+      href: '/admin/index.html',
+      text: 'Admin',
+      ...(adminPath ? { 'aria-current': 'page' } : {}),
+    });
+    accountBtn.parentNode.insertBefore(adminLink, accountBtn);
+
+    const drawerInner = drawer.querySelector('.nav-drawer__inner');
+    const drawerFoot = drawerInner?.querySelector('.nav-drawer__foot');
+    const drawerAdmin = e('a', {
+      class: 'nav-drawer__link',
+      href: '/admin/index.html',
+      ...(adminPath ? { 'aria-current': 'page' } : {}),
+    }, 'Admin', e('span', { class: 'chev', 'aria-hidden': 'true', text: '→' }));
+    if (drawerFoot) drawerInner.insertBefore(drawerAdmin, drawerFoot);
+
+    return adminLink;
+  };
+  const removeAdminLink = () => {
+    topBar.querySelector('.nav-pill a[href="/admin/index.html"]')?.remove();
+    drawer.querySelector('a[href="/admin/index.html"]')?.remove();
+  };
+
+  // Apply cached admin state synchronously, before mount, so the pill
+  // is rendered in its final shape on the very first paint.
+  if (cachedIsAdmin) insertAdminLink(false);
+
   document.body.prepend(topBar);
   document.body.appendChild(drawer);
-  initNavIndicator(topBar.querySelector('.nav-pill'));
+  const pillEl = topBar.querySelector('.nav-pill');
+  initNavIndicator(pillEl);
   initNavDrawer(burgerBtn, drawer);
 
-  // Personalize the account button label, hook up sign-out.
-  const { data: { session } } = await window.sb.auth.getSession();
-  if (!session) return; // auth-guard already handled redirect
-
-  const email = session.user.email || '';
-  let firstName = email.split('@')[0];
-  try {
-    const { data: profile } = await window.sb
-      .from('profiles').select('full_name').eq('id', session.user.id).single();
-    if (profile?.full_name) firstName = profile.full_name.split(' ')[0];
-  } catch { /* ignore — fall back to the email handle */ }
-
-  document.getElementById('navName').textContent = firstName;
-
-  // If this user is an admin, slip an "Admin" link in just before
-  // the user-name button in the nav pill.
-  try {
-    const { data: roleRow } = await window.sb
-      .from('profiles').select('role').eq('id', session.user.id).single();
-    if (roleRow?.role === 'admin') {
-      const adminPath = path.startsWith('/admin/');
-      const adminLink = e('a', {
-        class: 'nav-link',
-        href: '/admin/index.html',
-        text: 'Admin',
-        ...(adminPath ? { 'aria-current': 'page' } : {}),
-      });
-      accountBtn.parentNode.insertBefore(adminLink, accountBtn);
-
-      // Mirror the Admin entry in the mobile drawer so phones see it too.
-      const drawerInner = drawer.querySelector('.nav-drawer__inner');
-      const drawerFoot = drawerInner?.querySelector('.nav-drawer__foot');
-      const drawerAdmin = e('a', {
-        class: 'nav-drawer__link',
-        href: '/admin/index.html',
-        ...(adminPath ? { 'aria-current': 'page' } : {}),
-      }, 'Admin', e('span', { class: 'chev', 'aria-hidden': 'true', text: '\u2192' }));
-      if (drawerFoot) drawerInner.insertBefore(drawerAdmin, drawerFoot);
-    }
-  } catch { /* non-fatal */ }
-
-  // The user-name pill is now a shortcut to the account page; sign-out
-  // lives on /account.html itself.
+  // Wire the click handler immediately — it doesn't depend on session.
   accountBtn.addEventListener('click', () => {
     location.href = '/account.html';
   });
+
+  // Reveal the pill on the next paint when we have cache (the pill
+  // is already in its final shape). On first visits, defer the
+  // reveal until the live profile resolves so we don't fade in a
+  // placeholder ("Account") and then swap the text mid-transition.
+  const revealPill = () =>
+    requestAnimationFrame(() => pillEl.classList.add('is-ready'));
+  if (haveNavCache) revealPill();
+
+  // --- Reconcile against the live profile ---------------------------
+  const { data: { session } } = await window.sb.auth.getSession();
+  if (!session) return; // auth-guard handles the redirect
+
+  const email = session.user.email || '';
+  let liveFirstName = email.split('@')[0];
+  let liveIsAdmin = false;
+  try {
+    const { data: profile } = await window.sb
+      .from('profiles')
+      .select('full_name, role')
+      .eq('id', session.user.id)
+      .single();
+    if (profile?.full_name) liveFirstName = profile.full_name.split(' ')[0];
+    liveIsAdmin = profile?.role === 'admin';
+  } catch { /* fall back to email handle, non-admin */ }
+
+  if (liveFirstName !== cachedFirstName) {
+    document.getElementById('navName').textContent = liveFirstName;
+  }
+
+  if (liveIsAdmin !== cachedIsAdmin) {
+    if (liveIsAdmin) {
+      const link = insertAdminLink(true);
+      // Two rAFs so the opacity:0 frame paints before .is-ready flips
+      // it to 1 \u2014 otherwise the transition can be skipped.
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => link.classList.add('is-ready')));
+    } else {
+      removeAdminLink();
+    }
+  }
+
+  writeNavCache({ firstName: liveFirstName, isAdmin: liveIsAdmin });
+
+  // First visit: reveal now, with the live values stamped in.
+  if (!haveNavCache) revealPill();
 })();
