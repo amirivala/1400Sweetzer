@@ -320,6 +320,20 @@ button { background: none; border: 0; cursor: pointer; }
     0 10px 26px rgba(0, 0, 0, 0.22);
 }
 
+.top-bar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper-mute);
+  text-decoration: none;
+  transition: color 0.18s var(--ease), gap 0.2s var(--ease);
+}
+.top-bar__link:hover { color: var(--paper); gap: 0.7rem; }
+
 .nav-pill {
   display: flex;
   align-items: center;
