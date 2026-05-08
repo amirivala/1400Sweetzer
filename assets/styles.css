@@ -1031,45 +1031,22 @@ button { background: none; border: 0; cursor: pointer; }
   mix-blend-mode: overlay;
   pointer-events: none;
 }
-.hist-top {
-  position: relative;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem clamp(1rem, 4vw, 3rem);
+/* When the visitor is signed in, page-shell.js prepends the resident
+   nav-pill at body level. We mirror the sticky/translucent treatment
+   used on .page so it floats over the dark history backdrop instead
+   of butting up against it. Public visitors get no top bar at all. */
+.hist-shell.is-resident > .top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 101;
+  background: rgba(12, 10, 9, 0.55);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-.hist-top__nav {
-  display: flex;
-  align-items: center;
-  gap: 1.3rem;
+.hist-shell.is-resident .hist-main {
+  padding-top: clamp(1rem, 3vw, 2.5rem);
 }
-.hist-top__home {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--paper-mute);
-  text-decoration: none;
-  transition: color 0.18s var(--ease);
-}
-.hist-top__home:hover { color: var(--paper); }
-.hist-top__signin {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.55rem 1.05rem 0.55rem 1.15rem;
-  border-radius: var(--radius-pill);
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 0.85rem;
-  font-weight: 500;
-  text-decoration: none;
-  transition: background 0.18s var(--ease);
-}
-.hist-top__signin:hover { background: #fff; }
-.hist-top__signin svg { transition: transform 0.2s var(--ease); }
-.hist-top__signin:hover svg { transform: translate(2px, -2px); }
 
 .hist-main {
   position: relative;

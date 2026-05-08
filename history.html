@@ -10,25 +10,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=12" />
+  <link rel="stylesheet" href="/assets/styles.css?v=13" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="hist-shell">
 
-  <header class="hist-top fade delay-1">
-    <a class="top-bar__brand" href="/" aria-label="Sunset Penthouse home">
-      <span class="top-bar__brand-name">Sunset<br />Penthouse</span>
-    </a>
-    <nav class="hist-top__nav" aria-label="Public">
-      <a class="hist-top__home" href="/">Home</a>
-      <a class="hist-top__signin" href="/auth/signin.html">
-        <span>Sign in</span>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M7 17L17 7"/><path d="M7 7h10v10"/>
-        </svg>
-      </a>
-    </nav>
-  </header>
+  <!--
+    Top bar is conditional and lives in the script at the bottom of
+    the page: signed-in residents get the full nav-pill via
+    page-shell.js; public visitors get no top bar at all (the page
+    is a self-contained editorial story with its own footer).
+  -->
 
   <main class="hist-main">
 
@@ -143,5 +135,22 @@
 
   </main>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script>
+    // Render a top bar only if the visitor is signed in. Residents get
+    // the full nav pill (via page-shell.js) so they can hop back to
+    // the rest of the portal; public visitors get no top bar — the
+    // page works as a self-contained editorial story.
+    (async () => {
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+      document.body.classList.add('is-resident');
+      const s = document.createElement('script');
+      s.src = '/assets/page-shell.js?v=10';
+      document.body.appendChild(s);
+    })();
+  </script>
 </body>
 </html>
