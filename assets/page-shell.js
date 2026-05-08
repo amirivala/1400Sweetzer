@@ -9,6 +9,8 @@
 // auth-guard.js, page-shell.js, dom.js, then page-specific script.
 
 (async () => {
+  // Account is intentionally absent — the user-name button on the right
+  // of the pill links to /account.html, and the account page hosts sign-out.
   const navItems = [
     { href: '/home.html',      label: 'Home' },
     { href: '/news.html',      label: 'News' },
@@ -16,7 +18,6 @@
     { href: '/calendar.html',  label: 'Calendar' },
     { href: '/directory.html', label: 'Directory' },
     { href: '/providers.html', label: 'Providers' },
-    { href: '/account.html',   label: 'Account' },
   ];
 
   const path = location.pathname.replace(/\/$/, '') || '/index.html';
@@ -139,8 +140,8 @@
   });
 
   const accountBtn = e('button',
-    { class: 'nav-cta', id: 'navAccount', type: 'button', 'aria-label': 'Sign out' },
-    e('span', { id: 'navName', text: 'Sign out' }),
+    { class: 'nav-cta', id: 'navAccount', type: 'button', 'aria-label': 'Your account' },
+    e('span', { id: 'navName', text: 'Account' }),
     arrowIcon(),
   );
 
@@ -207,12 +208,11 @@
   document.getElementById('navName').textContent = firstName;
 
   // If this user is an admin, slip an "Admin" link in just before
-  // the Account link in the nav pill.
+  // the user-name button in the nav pill.
   try {
     const { data: roleRow } = await window.sb
       .from('profiles').select('role').eq('id', session.user.id).single();
     if (roleRow?.role === 'admin') {
-      const accountLink = topBar.querySelector('a[href="/account.html"]');
       const adminPath = path.startsWith('/admin/');
       const adminLink = e('a', {
         class: 'nav-link',
@@ -220,25 +220,23 @@
         text: 'Admin',
         ...(adminPath ? { 'aria-current': 'page' } : {}),
       });
-      if (accountLink) accountLink.parentNode.insertBefore(adminLink, accountLink);
+      accountBtn.parentNode.insertBefore(adminLink, accountBtn);
 
       // Mirror the Admin entry in the mobile drawer so phones see it too.
       const drawerInner = drawer.querySelector('.nav-drawer__inner');
-      const drawerAccount = drawerInner?.querySelector('a[href="/account.html"]');
+      const drawerFoot = drawerInner?.querySelector('.nav-drawer__foot');
       const drawerAdmin = e('a', {
         class: 'nav-drawer__link',
         href: '/admin/index.html',
         ...(adminPath ? { 'aria-current': 'page' } : {}),
       }, 'Admin', e('span', { class: 'chev', 'aria-hidden': 'true', text: '\u2192' }));
-      if (drawerAccount) drawerInner.insertBefore(drawerAdmin, drawerAccount);
+      if (drawerFoot) drawerInner.insertBefore(drawerAdmin, drawerFoot);
     }
   } catch { /* non-fatal */ }
 
-  accountBtn.addEventListener('click', async (ev) => {
-    ev.preventDefault();
-    if (confirm('Sign out of ' + email + '?')) {
-      await window.sb.auth.signOut();
-      location.href = '/';
-    }
+  // The user-name pill is now a shortcut to the account page; sign-out
+  // lives on /account.html itself.
+  accountBtn.addEventListener('click', () => {
+    location.href = '/account.html';
   });
 })();
