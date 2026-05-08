@@ -921,6 +921,10 @@ button { background: none; border: 0; cursor: pointer; }
   line-height: 1.45;
   color: var(--paper-mute);
 }
+.auth-steps strong {
+  font-weight: 500;
+  color: var(--paper);
+}
 .auth-steps .step-num {
   flex: none;
   width: 1.4rem;
