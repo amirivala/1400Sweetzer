@@ -1776,6 +1776,9 @@ button { background: none; border: 0; cursor: pointer; }
   background: rgba(255, 255, 255, 0.08);
   box-shadow: 0 0 0 4px rgba(217, 106, 63, 0.18);
 }
+/* Native file/number inputs don't shrink below their intrinsic width as grid
+   items, which overflows the modal on narrow phones — let them fit. */
+.account-row input { min-width: 0; max-width: 100%; }
 
 /* Toggle (checkbox styled as switch) */
 .toggle {
@@ -1931,6 +1934,13 @@ button { background: none; border: 0; cursor: pointer; }
 
 /* ---------- Native dialog (new bulletin) ----------------- */
 .modal[open] {
+  /* Center explicitly. The universal `* { margin: 0 }` reset cancels the native
+     <dialog> margin:auto centering, which would otherwise pin it top-left. */
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
   border: 0;
   padding: 0;
   background: transparent;
