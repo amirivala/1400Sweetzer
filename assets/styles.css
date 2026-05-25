@@ -852,11 +852,16 @@ button { background: none; border: 0; cursor: pointer; }
   min-height: 100svh;
   display: grid;
   place-items: center;
+  /* Center the card when it fits, but top-align (and let the page grow so the
+     window can scroll) when the card is taller than the viewport — e.g. the
+     signup form on a short screen or with the mobile keyboard open. Without
+     this, centered overflow + clipping left the submit button unreachable.
+     Horizontal overflow is still contained by `body { overflow-x: hidden }`. */
+  align-content: safe center;
   padding: var(--gap-4);
   isolation: isolate;
   background:
     radial-gradient(ellipse at 70% 30%, #2a2a2a 0%, #0a0a0a 70%);
-  overflow: hidden;
 }
 .auth-shell::before {
   content: "";
