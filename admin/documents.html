@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Documents · Admin · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css?v=16" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Admin · Documents</span>
+      <div class="page-header__row">
+        <div>
+          <h1 class="page-header__title">The library.</h1>
+          <p class="page-header__sub">Upload PDFs and files for residents to read or download. Only board members can add or remove them.</p>
+        </div>
+        <button class="cta cta--solid" id="newBtn" type="button"><span>+ Add document</span></button>
+      </div>
+    </header>
+
+    <section id="docList" class="admin-list" aria-live="polite">
+      <div class="empty"><div class="empty__title">Loading…</div></div>
+    </section>
+  </main>
+
+  <dialog id="docDialog" class="modal liquid-glass-strong">
+    <div class="modal__inner">
+      <button class="modal__close" id="closeBtn" type="button" aria-label="Close">×</button>
+      <h2 class="modal__title" id="dialogTitle">Add document</h2>
+
+      <form id="docForm" autocomplete="off">
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="d_file">File</label>
+          <input id="d_file" type="file"
+                 accept=".pdf,.xlsx,.xls,.docx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" />
+          <span id="d_fileHint" class="account-hint"></span>
+        </div>
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="d_title">Title</label>
+          <input id="d_title" type="text" required maxlength="160" placeholder="Bylaws" />
+        </div>
+        <div class="account-row" style="margin-bottom: 0.8rem;">
+          <label for="d_note">Note (optional)</label>
+          <input id="d_note" type="text" maxlength="200" placeholder="Adopted May 2007" />
+        </div>
+        <div class="account-row" style="margin-bottom: 0.4rem;">
+          <label for="d_sort">Sort order</label>
+          <input id="d_sort" type="number" value="0" step="1" />
+        </div>
+
+        <div class="modal-actions">
+          <p id="formError" class="modal-error" role="alert"></p>
+          <button type="button" class="cta liquid-glass-strong" id="cancelBtn"><span>Cancel</span></button>
+          <button type="submit" class="cta cta--solid" id="submitBtn"><span id="submitLabel">Add document</span></button>
+        </div>
+      </form>
+    </div>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/admin-guard.js"></script>
+  <script src="/assets/page-shell.js?v=10"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const list        = document.getElementById('docList');
+      const dialog      = document.getElementById('docDialog');
+      const dlgTitle    = document.getElementById('dialogTitle');
+      const newBtn      = document.getElementById('newBtn');
+      const closeBtn    = document.getElementById('closeBtn');
+      const cancelBtn   = document.getElementById('cancelBtn');
+      const form        = document.getElementById('docForm');
+      const formError   = document.getElementById('formError');
+      const submitLabel = document.getElementById('submitLabel');
+      const fields = {
+        file:  document.getElementById('d_file'),
+        title: document.getElementById('d_title'),
+        note:  document.getElementById('d_note'),
+        sort:  document.getElementById('d_sort'),
+      };
+
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+
+      const BUCKET = 'documents';
+      let editing = null; // the row being edited, or null when adding
+
+      const fmtBytes = (n) => {
+        if (n == null) return '';
+        if (n < 1024) return n + ' B';
+        if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+        return (n / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + ' MB';
+      };
+      const extOf = (name) => (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
+      const badge = (name) => (extOf(name) || 'file').toUpperCase();
+      // Resolve content-type from the extension so it always matches the bucket's
+      // allowed_mime_types (browsers usually set file.type by extension, but this
+      // guards the case where it's empty or wrong — e.g. an .xlsx sniffed as zip).
+      const MIME_BY_EXT = {
+        pdf:  'application/pdf',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        xls:  'application/vnd.ms-excel',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        jpg:  'image/jpeg',
+        jpeg: 'image/jpeg',
+        png:  'image/png',
+      };
+
+      const open = (d) => {
+        editing = d || null;
+        dlgTitle.textContent   = d ? 'Edit document' : 'Add document';
+        submitLabel.textContent = d ? 'Save' : 'Add document';
+        formError.textContent  = '';
+        fields.file.value  = '';
+        fields.title.value = d?.title || '';
+        fields.note.value  = d?.note || '';
+        fields.sort.value  = d ? String(d.sort_order) : '0';
+        document.getElementById('d_fileHint').textContent =
+          d ? ('Current: ' + d.file_name + ' — choose a file only to replace it.') : '';
+        if (typeof dialog.showModal === 'function') dialog.showModal();
+        else dialog.setAttribute('open', '');
+      };
+      const close = () => {
+        if (typeof dialog.close === 'function') dialog.close();
+        else dialog.removeAttribute('open');
+      };
+
+      newBtn.addEventListener('click', () => open(null));
+      closeBtn.addEventListener('click', close);
+      cancelBtn.addEventListener('click', close);
+      dialog.addEventListener('click', (e) => { if (e.target === dialog) close(); });
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        formError.textContent = '';
+        const title = fields.title.value.trim();
+        const file  = fields.file.files[0] || null;
+        if (!title) { formError.textContent = 'Title is required.'; return; }
+        if (!editing && !file) { formError.textContent = 'Choose a file to upload.'; return; }
+
+        const meta = {
+          title,
+          note: fields.note.value.trim() || null,
+          sort_order: parseInt(fields.sort.value, 10) || 0,
+        };
+
+        submitLabel.textContent = 'Saving…';
+
+        // Upload a new object if a file was chosen.
+        let newPath = null;
+        if (file) {
+          const ext = extOf(file.name);
+          const contentType = MIME_BY_EXT[ext] || file.type || 'application/octet-stream';
+          newPath = crypto.randomUUID() + (ext ? '.' + ext : '');
+          const { error: upErr } = await window.sb.storage.from(BUCKET)
+            .upload(newPath, file, { contentType, upsert: false });
+          if (upErr) { submitLabel.textContent = editing ? 'Save' : 'Add document';
+            formError.textContent = 'Upload failed: ' + upErr.message; return; }
+          meta.storage_path = newPath;
+          meta.file_name    = file.name;
+          meta.mime_type    = contentType;
+          meta.size_bytes   = file.size;
+        }
+
+        let dbErr;
+        if (editing) {
+          ({ error: dbErr } = await window.sb.from('documents').update(meta).eq('id', editing.id));
+        } else {
+          meta.created_by = session.user.id;
+          ({ error: dbErr } = await window.sb.from('documents').insert(meta));
+        }
+
+        if (dbErr) {
+          if (newPath) await window.sb.storage.from(BUCKET).remove([newPath]); // avoid orphan
+          submitLabel.textContent = editing ? 'Save' : 'Add document';
+          formError.textContent = 'Couldn’t save: ' + dbErr.message;
+          return;
+        }
+
+        // On a successful file replacement, delete the old object.
+        if (editing && newPath && editing.storage_path && editing.storage_path !== newPath) {
+          await window.sb.storage.from(BUCKET).remove([editing.storage_path]);
+        }
+
+        close();
+        load();
+      });
+
+      const load = async () => {
+        const { data, error } = await window.sb
+          .from('documents')
+          .select('id, title, note, storage_path, file_name, mime_type, size_bytes, sort_order')
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true });
+
+        if (error) {
+          mount(list, el('div', { class: 'empty' },
+            el('div', { class: 'empty__title', text: 'Trouble loading documents' }),
+            el('p', { class: 'empty__sub', text: error.message })));
+          return;
+        }
+        if (!data || data.length === 0) {
+          mount(list, el('div', { class: 'empty' },
+            el('div', { class: 'empty__title', text: 'No documents yet' }),
+            el('p', { class: 'empty__sub', text: 'Tap “Add document” to upload one.' })));
+          return;
+        }
+
+        const rows = data.map((d) =>
+          el('article', { class: 'card liquid-glass admin-row' },
+            el('div', { class: 'admin-row__main' },
+              el('div', { class: 'admin-row__title', text: d.title }),
+              el('div', { class: 'admin-row__meta' },
+                el('span', { text: badge(d.file_name) }),
+                el('span', { text: '· ' + fmtBytes(d.size_bytes) }),
+                d.note ? el('span', { text: '· ' + d.note }) : null,
+              ),
+            ),
+            el('div', { class: 'admin-row__actions' },
+              el('button', { class: 'btn-mini', type: 'button', text: 'Edit',
+                onclick: () => open(d) }),
+              el('button', { class: 'btn-mini btn-mini--danger', type: 'button', text: 'Delete',
+                onclick: async () => {
+                  if (!confirm('Delete “' + d.title + '”?')) return;
+                  const { error: sErr } = await window.sb.storage.from(BUCKET).remove([d.storage_path]);
+                  if (sErr) { alert('Couldn’t delete the file: ' + sErr.message); return; }
+                  const { error: dErr } = await window.sb.from('documents').delete().eq('id', d.id);
+                  if (dErr) { alert('File removed but row delete failed: ' + dErr.message); return; }
+                  load();
+                } }),
+            ),
+          ));
+
+        mount(list, ...rows);
+      };
+
+      load();
+    })();
+  </script>
+</body>
+</html>
