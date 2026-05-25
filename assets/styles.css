@@ -743,6 +743,25 @@ button { background: none; border: 0; cursor: pointer; }
   .hero-display__small { white-space: normal; }
 }
 
+/* Formal legal designation under the name — mono uppercase tracking,
+   matching the address-strip caption vocabulary so it reads as an
+   official masthead line rather than a serif subtitle. */
+.hero-display__entity {
+  font-family: var(--mono);
+  font-style: normal;
+  font-variation-settings: normal;
+  font-size: clamp(0.62rem, 0.5rem + 0.45vw, 0.82rem);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 250, 240, 0.82);
+  margin-top: 1.15em;
+}
+@media (max-width: 640px) {
+  .hero-display__entity { letter-spacing: 0.16em; white-space: normal; }
+}
+
 /* The supporting paragraph under the headline */
 .hero-sub {
   font-family: var(--sans);
