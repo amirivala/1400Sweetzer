@@ -357,6 +357,18 @@ Create `admin/documents.html` with this exact content:
       };
       const extOf = (name) => (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
       const badge = (name) => (extOf(name) || 'file').toUpperCase();
+      // Resolve content-type from the extension so it always matches the bucket's
+      // allowed_mime_types (browsers usually set file.type by extension, but this
+      // guards the case where it's empty or wrong — e.g. an .xlsx sniffed as zip).
+      const MIME_BY_EXT = {
+        pdf:  'application/pdf',
+        xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        xls:  'application/vnd.ms-excel',
+        docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        jpg:  'image/jpeg',
+        jpeg: 'image/jpeg',
+        png:  'image/png',
+      };
 
       const open = (d) => {
         editing = d || null;
@@ -401,14 +413,16 @@ Create `admin/documents.html` with this exact content:
         // Upload a new object if a file was chosen.
         let newPath = null;
         if (file) {
-          newPath = crypto.randomUUID() + (extOf(file.name) ? '.' + extOf(file.name) : '');
+          const ext = extOf(file.name);
+          const contentType = MIME_BY_EXT[ext] || file.type || 'application/octet-stream';
+          newPath = crypto.randomUUID() + (ext ? '.' + ext : '');
           const { error: upErr } = await window.sb.storage.from(BUCKET)
-            .upload(newPath, file, { contentType: file.type || undefined, upsert: false });
+            .upload(newPath, file, { contentType, upsert: false });
           if (upErr) { submitLabel.textContent = editing ? 'Save' : 'Add document';
             formError.textContent = 'Upload failed: ' + upErr.message; return; }
           meta.storage_path = newPath;
           meta.file_name    = file.name;
-          meta.mime_type    = file.type || null;
+          meta.mime_type    = contentType;
           meta.size_bytes   = file.size;
         }
 
