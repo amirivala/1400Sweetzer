@@ -24,113 +24,88 @@
       </p>
     </header>
 
-    <section class="docs-list" aria-label="Documents">
-
-      <a class="doc-row liquid-glass rise delay-2" href="/docs/articles-of-incorporation.pdf" download>
-        <span class="doc-row__type">PDF</span>
-        <span class="doc-row__body">
-          <span class="doc-row__title">Articles of Incorporation</span>
-          <span class="doc-row__note">Founding HOA document</span>
-        </span>
-        <span class="doc-row__meta">
-          <span class="doc-row__size">665 KB</span>
-          <svg class="doc-row__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 4v14"/><path d="M5 11l7 7 7-7"/>
-          </svg>
-        </span>
-      </a>
-
-      <a class="doc-row liquid-glass rise delay-2" href="/docs/bylaws-2007.pdf" download>
-        <span class="doc-row__type">PDF</span>
-        <span class="doc-row__body">
-          <span class="doc-row__title">Bylaws</span>
-          <span class="doc-row__note">Adopted May 2007</span>
-        </span>
-        <span class="doc-row__meta">
-          <span class="doc-row__size">158 KB</span>
-          <svg class="doc-row__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 4v14"/><path d="M5 11l7 7 7-7"/>
-          </svg>
-        </span>
-      </a>
-
-      <a class="doc-row liquid-glass rise delay-3" href="/docs/ccrs-2007.pdf" download>
-        <span class="doc-row__type">PDF</span>
-        <span class="doc-row__body">
-          <span class="doc-row__title">CC&amp;Rs</span>
-          <span class="doc-row__note">Recorded July 30, 2007</span>
-        </span>
-        <span class="doc-row__meta">
-          <span class="doc-row__size">5.9 MB</span>
-          <svg class="doc-row__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 4v14"/><path d="M5 11l7 7 7-7"/>
-          </svg>
-        </span>
-      </a>
-
-      <a class="doc-row liquid-glass rise delay-3" href="/docs/rules-regulations-fines-2020.pdf" download>
-        <span class="doc-row__type">PDF</span>
-        <span class="doc-row__body">
-          <span class="doc-row__title">Rules, Regulations &amp; Fines</span>
-          <span class="doc-row__note">Effective January 2020</span>
-        </span>
-        <span class="doc-row__meta">
-          <span class="doc-row__size">227 KB</span>
-          <svg class="doc-row__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 4v14"/><path d="M5 11l7 7 7-7"/>
-          </svg>
-        </span>
-      </a>
-
-      <a class="doc-row liquid-glass rise delay-4" href="/docs/condominium-plan-1990.pdf" download>
-        <span class="doc-row__type">PDF</span>
-        <span class="doc-row__body">
-          <span class="doc-row__title">Condominium Plan</span>
-          <span class="doc-row__note">Filed 1990</span>
-        </span>
-        <span class="doc-row__meta">
-          <span class="doc-row__size">4.2 MB</span>
-          <svg class="doc-row__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 4v14"/><path d="M5 11l7 7 7-7"/>
-          </svg>
-        </span>
-      </a>
-
-      <a class="doc-row liquid-glass rise delay-4" href="/docs/building-upgrades.xlsx" download>
-        <span class="doc-row__type">XLSX</span>
-        <span class="doc-row__body">
-          <span class="doc-row__title">Building Upgrades</span>
-          <span class="doc-row__note">Capital improvement log</span>
-        </span>
-        <span class="doc-row__meta">
-          <span class="doc-row__size">11 KB</span>
-          <svg class="doc-row__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 4v14"/><path d="M5 11l7 7 7-7"/>
-          </svg>
-        </span>
-      </a>
-
-      <a class="doc-row liquid-glass rise delay-5" href="/docs/actuator-replacement.pdf" download>
-        <span class="doc-row__type">PDF</span>
-        <span class="doc-row__body">
-          <span class="doc-row__title">Actuator Replacement</span>
-          <span class="doc-row__note">Maintenance record</span>
-        </span>
-        <span class="doc-row__meta">
-          <span class="doc-row__size">65 KB</span>
-          <svg class="doc-row__arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 4v14"/><path d="M5 11l7 7 7-7"/>
-          </svg>
-        </span>
-      </a>
-
+    <section id="docsList" class="docs-list" aria-label="Documents" aria-live="polite">
+      <div class="empty"><div class="empty__title">Loading…</div></div>
     </section>
   </main>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/assets/env.js"></script>
   <script src="/assets/supabase-client.js"></script>
   <script src="/assets/auth-guard.js"></script>
   <script src="/assets/page-shell.js?v=10"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const wrap = document.getElementById('docsList');
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return; // auth-guard handles the redirect
+
+      const BUCKET = 'documents';
+      const fmtBytes = (n) => {
+        if (n == null) return '';
+        if (n < 1024) return n + ' B';
+        if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+        return (n / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + ' MB';
+      };
+      const badge = (name) => {
+        const ext = (name.includes('.') ? name.split('.').pop() : 'file');
+        return ext.toUpperCase();
+      };
+      const arrow = () => {
+        const NS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('class', 'doc-row__arrow');
+        svg.setAttribute('width', '14'); svg.setAttribute('height', '14');
+        svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'currentColor'); svg.setAttribute('stroke-width', '2.2');
+        svg.setAttribute('stroke-linecap', 'round'); svg.setAttribute('stroke-linejoin', 'round');
+        svg.setAttribute('aria-hidden', 'true');
+        const p1 = document.createElementNS(NS, 'path'); p1.setAttribute('d', 'M12 4v14');
+        const p2 = document.createElementNS(NS, 'path'); p2.setAttribute('d', 'M5 11l7 7 7-7');
+        svg.appendChild(p1); svg.appendChild(p2);
+        return svg;
+      };
+
+      const { data: docs, error } = await window.sb
+        .from('documents')
+        .select('id, title, note, storage_path, file_name, size_bytes, sort_order')
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        mount(wrap, el('div', { class: 'empty' },
+          el('div', { class: 'empty__title', text: 'Trouble loading documents' }),
+          el('p', { class: 'empty__sub', text: error.message })));
+        return;
+      }
+      if (!docs || docs.length === 0) {
+        mount(wrap, el('div', { class: 'empty' },
+          el('div', { class: 'empty__title', text: 'No documents yet' }),
+          el('p', { class: 'empty__sub', text: 'Documents posted by the board will appear here.' })));
+        return;
+      }
+
+      const rows = [];
+      for (const d of docs) {
+        // Short-lived signed URL; forces download with the original filename.
+        const { data: signed } = await window.sb.storage.from(BUCKET)
+          .createSignedUrl(d.storage_path, 3600, { download: d.file_name });
+        const href = signed?.signedUrl || '#';
+        rows.push(
+          el('a', { class: 'doc-row liquid-glass rise', href, ...(href === '#' ? {} : { download: d.file_name }) },
+            el('span', { class: 'doc-row__type', text: badge(d.file_name) }),
+            el('span', { class: 'doc-row__body' },
+              el('span', { class: 'doc-row__title', text: d.title }),
+              d.note ? el('span', { class: 'doc-row__note', text: d.note }) : null,
+            ),
+            el('span', { class: 'doc-row__meta' },
+              el('span', { class: 'doc-row__size', text: fmtBytes(d.size_bytes) }),
+              arrow(),
+            ),
+          ));
+      }
+      mount(wrap, ...rows);
+    })();
+  </script>
 </body>
 </html>
