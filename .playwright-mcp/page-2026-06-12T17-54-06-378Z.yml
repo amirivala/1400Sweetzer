@@ -1,0 +1,19 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e5]: SP
+    - generic [ref=e6]: Sunset Penthouse
+  - heading "Sign in." [level=1] [ref=e7]
+  - paragraph [ref=e8]: A one-tap link will arrive in your inbox. No password to remember — and we'll keep you signed in on this device.
+  - generic [ref=e9]:
+    - generic [ref=e10]:
+      - generic [ref=e11]: Email
+      - textbox "Email" [active] [ref=e12]:
+        - /placeholder: you@example.com
+    - button "Send the magic link" [ref=e13] [cursor=pointer]:
+      - generic [ref=e14]: Send the magic link
+      - img [ref=e15]
+  - status [ref=e18]
+  - paragraph [ref=e19]:
+    - text: Not a resident yet?
+    - link "Request access" [ref=e20] [cursor=pointer]:
+      - /url: /signup.html
