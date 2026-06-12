@@ -81,6 +81,12 @@
         return `${ten.slice(0, 3)}-${ten.slice(3, 6)}-${ten.slice(6)}`;
       };
 
+      const telHref = (p) => {
+        const d = String(p).replace(/[^\d]/g, '');
+        const ten = d.length === 11 && d.startsWith('1') ? d.slice(1) : d;
+        return ten.length === 10 ? `tel:+1${ten}` : 'tel:' + String(p).replace(/[^+\d]/g, '');
+      };
+
       const phoneIcon = () => {
         const NS = 'http://www.w3.org/2000/svg';
         const svg = document.createElementNS(NS, 'svg');
@@ -118,7 +124,7 @@
         const rows = people.map((r) => {
           const phoneShown = r.phone && r.show_phone;
           const phoneFmt = phoneShown ? fmtPhone(r.phone) : null;
-          const phoneHref = phoneShown ? 'tel:' + String(r.phone).replace(/[^+\d]/g, '') : null;
+          const phoneHref = phoneShown ? telHref(r.phone) : null;
           return el('div', { class: 'dir-person' },
             el('div', { class: 'dir-person__name' },
               el('span', { text: r.display_name || 'Unnamed resident' }),
