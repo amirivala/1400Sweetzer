@@ -20,6 +20,7 @@
     { href: '/providers.html', label: 'Providers' },
     { href: '/documents.html', label: 'Docs' },
     { href: '/history.html',   label: 'History' },
+    { href: '/contact.html',   label: 'Contact' },
   ];
 
   const path = location.pathname.replace(/\/$/, '') || '/index.html';

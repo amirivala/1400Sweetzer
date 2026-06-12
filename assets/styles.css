@@ -1780,6 +1780,29 @@ button { background: none; border: 0; cursor: pointer; }
    items, which overflows the modal on narrow phones — let them fit. */
 .account-row input { min-width: 0; max-width: 100%; }
 
+.account-row textarea {
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--paper);
+  font-family: inherit;
+  font-size: 1rem;
+  line-height: 1.55;
+  min-height: 9em;
+  resize: vertical;
+  outline: 0;
+  min-width: 0;
+  max-width: 100%;
+  transition: border-color 0.18s var(--ease), background 0.2s var(--ease), box-shadow 0.18s var(--ease);
+}
+.account-row textarea::placeholder { color: var(--paper-low); }
+.account-row textarea:focus {
+  border-color: var(--terracotta);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 4px rgba(217, 106, 63, 0.18);
+}
+
 /* Toggle (checkbox styled as switch) */
 .toggle {
   display: flex;

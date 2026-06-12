@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c0a09" />
+  <title>Contact the board · Sunset Penthouse</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
+  <link rel="stylesheet" href="/assets/styles.css?v=18" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+</head>
+<body class="page">
+
+  <main class="page__container">
+    <header class="page-header rise delay-1">
+      <span class="page-header__kicker">Contact</span>
+      <h1 class="page-header__title">Talk to the board.</h1>
+      <p class="page-header__sub">
+        Repairs, questions, ideas — send the board a note. They reply
+        straight to your email, so the conversation continues in your inbox.
+      </p>
+    </header>
+
+    <form id="contactForm" class="card account-card liquid-glass rise delay-2" autocomplete="off">
+
+      <div class="account-row">
+        <label for="subject">Subject</label>
+        <input id="subject" type="text" placeholder="What's this about?" maxlength="200" required />
+      </div>
+
+      <div class="account-row">
+        <label for="message">Message</label>
+        <textarea id="message" placeholder="Write your note to the board…" maxlength="5000" rows="8" required></textarea>
+      </div>
+
+      <div class="account-actions">
+        <button type="submit" class="cta cta--solid">
+          <span>Send to the board</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+          </svg>
+        </button>
+        <p id="status" class="account-status" role="status"></p>
+      </div>
+
+    </form>
+
+    <section id="sentCard" class="card account-card liquid-glass" hidden>
+      <div class="empty">
+        <div class="empty__title">Message sent.</div>
+        <p id="sentSub" class="empty__sub"></p>
+      </div>
+      <div class="account-actions">
+        <button type="button" id="againBtn" class="cta liquid-glass-strong">
+          <span>Send another</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/assets/env.js"></script>
+  <script src="/assets/supabase-client.js"></script>
+  <script src="/assets/auth-guard.js"></script>
+  <script src="/assets/page-shell.js?v=11"></script>
+  <script src="/assets/dom.js"></script>
+  <script>
+    (async () => {
+      const form = document.getElementById('contactForm');
+      const status = document.getElementById('status');
+      const sentCard = document.getElementById('sentCard');
+      const sendBtn = form.querySelector('button[type="submit"]');
+
+      const { data: { session } } = await window.sb.auth.getSession();
+      if (!session) return;
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const subject = form.subject.value.trim();
+        const message = form.message.value.trim();
+        if (!subject || !message) return;
+
+        sendBtn.disabled = true;
+        status.textContent = 'Sending…';
+
+        try {
+          const res = await fetch(`${window.ENV.SUPABASE_URL}/functions/v1/send_board_message`, {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + session.access_token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ subject, message }),
+          });
+
+          if (!res.ok) {
+            let msg = 'Couldn’t send your message. Please try again.';
+            try { msg = (await res.json()).error || msg; } catch { /* keep default */ }
+            status.textContent = msg;
+            sendBtn.disabled = false;
+            return;
+          }
+
+          document.getElementById('sentSub').textContent =
+            'The board will reply to ' + (session.user.email || 'your email') +
+            '. A copy is in your inbox.';
+          form.hidden = true;
+          sentCard.hidden = false;
+        } catch {
+          status.textContent = 'Network trouble — please try again.';
+          sendBtn.disabled = false;
+        }
+      });
+
+      document.getElementById('againBtn').addEventListener('click', () => {
+        form.reset();
+        sendBtn.disabled = false;
+        status.textContent = '';
+        sentCard.hidden = true;
+        form.hidden = false;
+        form.subject.focus();
+      });
+    })();
+  </script>
+</body>
+</html>
