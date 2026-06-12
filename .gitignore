@@ -19,3 +19,4 @@ supabase/.branches/
 
 # Vercel local state
 .vercel/
+.playwright-mcp/
