@@ -47,18 +47,6 @@
       </div>
 
     </form>
-
-    <section id="sentCard" class="card account-card liquid-glass" hidden>
-      <div class="empty">
-        <div class="empty__title">Message sent.</div>
-        <p id="sentSub" class="empty__sub"></p>
-      </div>
-      <div class="account-actions">
-        <button type="button" id="againBtn" class="cta liquid-glass-strong">
-          <span>Send another</span>
-        </button>
-      </div>
-    </section>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -71,7 +59,6 @@
     (async () => {
       const form = document.getElementById('contactForm');
       const status = document.getElementById('status');
-      const sentCard = document.getElementById('sentCard');
       const sendBtn = form.querySelector('button[type="submit"]');
 
       const { data: { session } } = await window.sb.auth.getSession();
@@ -104,24 +91,14 @@
             return;
           }
 
-          document.getElementById('sentSub').textContent =
-            'The board will reply to ' + (session.user.email || 'your email') +
-            '. A copy is in your inbox.';
-          form.hidden = true;
-          sentCard.hidden = false;
+          form.reset();
+          sendBtn.disabled = false;
+          status.textContent = 'Sent ✓ — the board will reply to ' +
+            (session.user.email || 'your email') + '. A copy is in your inbox.';
         } catch {
           status.textContent = 'Network trouble — please try again.';
           sendBtn.disabled = false;
         }
-      });
-
-      document.getElementById('againBtn').addEventListener('click', () => {
-        form.reset();
-        sendBtn.disabled = false;
-        status.textContent = '';
-        sentCard.hidden = true;
-        form.hidden = false;
-        form.subject.focus();
       });
     })();
   </script>
