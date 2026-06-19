@@ -27,11 +27,14 @@ const FROM_EMAIL         = Deno.env.get('FROM_EMAIL')  || 'onboarding@resend.dev
 const REPLY_TO           = Deno.env.get('BOARD_REPLY_TO') || 'board@1400nsweetzer.com';
 const FROM_NAME          = Deno.env.get('FROM_NAME')   || 'Sunset Penthouse';
 const SITE_URL           = (Deno.env.get('SITE_URL')   || 'https://1400nsweetzer.com').replace(/\/$/, '');
+// Shared secret presented by the news_posts DB trigger (X-Webhook-Secret).
+// Lets the server-side trigger invoke this function without a user JWT.
+const WEBHOOK_SECRET     = Deno.env.get('NEWS_WEBHOOK_SECRET') || '';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-webhook-secret',
 };
 
 function escapeHtml(s: string): string {
@@ -230,59 +233,63 @@ function buildEmail(post: { id: string; title: string; body: string; cover_image
 }
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405, headers: corsHeaders });
   }
 
-  // 1. Verify caller is an approved admin.
-  const auth = req.headers.get('Authorization') || '';
-  const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { Authorization: auth } },
-  });
-  const { data: { user }, error: userErr } = await userClient.auth.getUser();
-  if (userErr || !user) {
-    return new Response('Unauthorized', { status: 401, headers: corsHeaders });
-  }
-
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-  const { data: callerProfile } = await admin
-    .from('profiles').select('role, status').eq('id', user.id).single();
-  if (!callerProfile || callerProfile.role !== 'admin' || callerProfile.status !== 'approved') {
-    return new Response('Forbidden', { status: 403, headers: corsHeaders });
+
+  // --- Auth: server-side trigger (shared secret) OR admin (session JWT) ---
+  const providedSecret = req.headers.get('X-Webhook-Secret') || '';
+  const bySecret = WEBHOOK_SECRET.length > 0 && providedSecret === WEBHOOK_SECRET;
+
+  if (!bySecret) {
+    const authHeader = req.headers.get('Authorization') || '';
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: { user }, error: userErr } = await userClient.auth.getUser();
+    if (userErr || !user) {
+      return new Response('Unauthorized', { status: 401, headers: corsHeaders });
+    }
+    const { data: callerProfile } = await admin
+      .from('profiles').select('role, status').eq('id', user.id).single();
+    if (!callerProfile || callerProfile.role !== 'admin' || callerProfile.status !== 'approved') {
+      return new Response('Forbidden', { status: 403, headers: corsHeaders });
+    }
   }
 
-  // 2. Read payload.
-  let body: { post_id?: string };
+  // --- Payload ---
+  let body: { post_id?: string; force?: boolean };
   try { body = await req.json(); }
   catch { return new Response('Bad JSON', { status: 400, headers: corsHeaders }); }
   const postId = body.post_id;
-  if (!postId) {
-    return new Response('Missing post_id', { status: 400, headers: corsHeaders });
-  }
+  const force = body.force === true;
+  if (!postId) return new Response('Missing post_id', { status: 400, headers: corsHeaders });
 
-  // 3. Fetch the post.
+  const json = (obj: unknown, status = 200) =>
+    new Response(JSON.stringify(obj), {
+      status, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  // --- Fetch post + re-check send conditions against the DB ---
   const { data: post, error: postErr } = await admin
     .from('news_posts')
-    .select('id, title, body, cover_image_url, published')
+    .select('id, title, body, cover_image_url, published, email_residents, email_sent_at')
     .eq('id', postId).single();
-  if (postErr || !post) {
-    return new Response('Post not found', { status: 404, headers: corsHeaders });
-  }
-  if (!post.published) {
-    return new Response('Post is not published', { status: 400, headers: corsHeaders });
+  if (postErr || !post) return json({ ok: false, error: 'Post not found' }, 404);
+
+  if (!post.published)       return json({ ok: true, sent: 0, skipped: true, reason: 'not_published' });
+  if (!post.email_residents) return json({ ok: true, sent: 0, skipped: true, reason: 'email_off' });
+  if (post.email_sent_at && !force) {
+    return json({ ok: true, sent: 0, skipped: true, reason: 'already_sent' });
   }
 
-  // 4. Find opted-in approved residents and look up their emails.
+  // --- Recipients: approved, opted-in residents with an email ---
   const { data: profiles } = await admin
-    .from('profiles')
-    .select('id')
-    .eq('status', 'approved')
-    .eq('email_news_optin', true);
+    .from('profiles').select('id').eq('status', 'approved').eq('email_news_optin', true);
   const optInIds = new Set((profiles || []).map((p) => p.id));
-
   // listUsers gives us emails. 1000 per page is plenty for one building.
   const { data: usersPage } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   const recipients = (usersPage?.users || [])
@@ -290,42 +297,42 @@ Deno.serve(async (req) => {
     .map((u) => u.email!);
 
   if (recipients.length === 0) {
-    return new Response(JSON.stringify({ sent: 0, message: 'No opted-in recipients' }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return json({ ok: true, sent: 0, skipped: true, reason: 'no_recipients' });
   }
 
-  // 5. Build the email and send via Resend's batch endpoint.
+  // --- Send via Resend's batch endpoint ---
   const { html, text } = buildEmail(post);
   const fromHeader = `${FROM_NAME} <${FROM_EMAIL}>`;
   const batch = recipients.map((to) => ({
-    from: fromHeader,
-    reply_to: REPLY_TO,
-    to,
-    subject: post.title,
-    html,
-    text,
+    from: fromHeader, reply_to: REPLY_TO, to, subject: post.title, html, text,
   }));
 
-  const resendRes = await fetch('https://api.resend.com/emails/batch', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(batch),
-  });
+  let resendOk = false;
+  let resendParsed: unknown = null;
+  try {
+    const resendRes = await fetch('https://api.resend.com/emails/batch', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(batch),
+    });
+    const resendBody = await resendRes.text();
+    try { resendParsed = JSON.parse(resendBody); } catch { resendParsed = resendBody; }
+    resendOk = resendRes.ok;
+  } catch (e) {
+    resendParsed = `fetch error: ${(e as Error)?.message || e}`;
+  }
 
-  const resendBody = await resendRes.text();
-  let parsed: unknown;
-  try { parsed = JSON.parse(resendBody); } catch { parsed = resendBody; }
-
-  return new Response(JSON.stringify({
-    ok: resendRes.ok,
-    sent: recipients.length,
-    resend: parsed,
-  }), {
-    status: resendRes.ok ? 200 : 502,
-    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-  });
+  // --- Record outcome on the post (visibility + idempotency) ---
+  if (resendOk) {
+    await admin.from('news_posts').update({
+      email_sent_at: new Date().toISOString(),
+      email_sent_count: recipients.length,
+      email_send_error: null,
+    }).eq('id', postId);
+    return json({ ok: true, sent: recipients.length, resend: resendParsed });
+  } else {
+    const errText = (typeof resendParsed === 'string' ? resendParsed : JSON.stringify(resendParsed)).slice(0, 500);
+    await admin.from('news_posts').update({ email_send_error: errText }).eq('id', postId);
+    return json({ ok: false, sent: 0, error: errText, resend: resendParsed }, 502);
+  }
 });
