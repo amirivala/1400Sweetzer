@@ -117,12 +117,13 @@
       let currentId = new URLSearchParams(location.search).get('id');
       let isPublished = false;
       let hasPublishedAt = false;
+      let hasEmailSent = false;
 
       if (currentId) {
         // Editing existing
         const { data: post, error } = await window.sb
           .from('news_posts')
-          .select('id, title, body, cover_image_url, published, email_residents, published_at')
+          .select('id, title, body, cover_image_url, published, email_residents, published_at, email_sent_at')
           .eq('id', currentId).single();
         if (error || !post) {
           statusEl.textContent = 'Couldn\u2019t load post: ' + (error?.message || 'not found');
@@ -133,6 +134,7 @@
         emailEl.checked   = !!post.email_residents;
         isPublished       = !!post.published;
         hasPublishedAt    = !!post.published_at;
+        hasEmailSent      = !!post.email_sent_at;
         // Setting Quill from a string of HTML — Quill handles its own
         // sanitization for the editor view; this is content authored by
         // an admin previously, sanitized again on render via DOMPurify
@@ -165,37 +167,40 @@
         return payload;
       };
 
-      // Fire the email pipeline (only on transition to published).
-      const sendEmail = async (postId) => {
-        statusEl.textContent = 'Published \u2713 \u00b7 sending emails\u2026';
-        try {
-          const res = await fetch(`${window.ENV.SUPABASE_URL}/functions/v1/send_news_email`, {
-            method: 'POST',
-            headers: {
-              'Authorization': 'Bearer ' + session.access_token,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ post_id: postId }),
-          });
-          if (!res.ok) {
-            const txt = await res.text();
-            statusEl.textContent = 'Published \u2713 \u00b7 email failed: ' + txt.slice(0, 140);
+      // The resident email is now sent server-side: a DB trigger fires
+      // send_news_email the moment a post is published with the toggle on.
+      // The browser no longer sends it (that was fragile \u2014 a closed tab lost
+      // the email). We just poll the row briefly to confirm it went out.
+      const pollSent = async (postId) => {
+        statusEl.textContent = 'Published \u2713 \u00b7 emailing residents\u2026';
+        for (let i = 0; i < 6; i++) {
+          await new Promise((r) => setTimeout(r, 2500));
+          const { data } = await window.sb
+            .from('news_posts')
+            .select('email_sent_at, email_sent_count, email_send_error')
+            .eq('id', postId).single();
+          if (data?.email_sent_at) {
+            const n = data.email_sent_count || 0;
+            statusEl.textContent = `Published \u2713 \u00b7 emailed ${n} resident${n === 1 ? '' : 's'}`;
+            hasEmailSent = true;
             return;
           }
-          const result = await res.json();
-          const n = result.sent || 0;
-          statusEl.textContent = `Published \u2713 \u00b7 emailed ${n} resident${n === 1 ? '' : 's'}`;
-        } catch (e) {
-          statusEl.textContent = 'Published \u2713 \u00b7 email failed: ' + (e?.message || e);
+          if (data?.email_send_error) {
+            statusEl.textContent = 'Published \u2713 \u00b7 email failed \u2014 re-send from the posts list';
+            return;
+          }
         }
+        statusEl.textContent = 'Published \u2713 \u00b7 email is sending (check status in the posts list)';
       };
 
       const save = async (publish) => {
         statusEl.textContent = 'Saving…';
         draftBtn.disabled = publishBtn.disabled = true;
 
-        const wasPublishedBefore = isPublished;
-        const willEmail = publish && emailEl.checked && !wasPublishedBefore;
+        // The DB trigger sends the email when a published post has the toggle
+        // on and hasn't been emailed yet. If that's the case, we'll poll to
+        // confirm; otherwise (already sent, or edit-after-send) nothing mails.
+        const willEmail = publish && emailEl.checked && !hasEmailSent;
 
         const payload = collect(publish);
         if (!payload) { draftBtn.disabled = publishBtn.disabled = false; return; }
@@ -225,7 +230,7 @@
           publishBtnLabel.textContent = 'Save changes';
           deleteBtn.style.display = '';
           pageTitle.textContent = 'Edit post.';
-          if (willEmail && currentId) await sendEmail(currentId);
+          if (willEmail && currentId) await pollSent(currentId);
         } else {
           statusEl.textContent = 'Draft saved \u2713';
           deleteBtn.style.display = '';

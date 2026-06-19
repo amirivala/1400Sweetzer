@@ -45,11 +45,37 @@
     (async () => {
       const list = document.getElementById('postList');
 
+      // Re-send a post's resident email via send_news_email (admin JWT,
+      // force:true). Used for recovery when a send failed or never ran.
+      const resend = async (postId, title, btn) => {
+        if (!confirm('Re-send the email for "' + (title || 'Untitled') + '" to all opted-in residents?')) return;
+        btn.disabled = true;
+        const original = btn.textContent;
+        btn.textContent = 'Sending…';
+        try {
+          const { data: { session } } = await window.sb.auth.getSession();
+          const res = await fetch(`${window.ENV.SUPABASE_URL}/functions/v1/send_news_email`, {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + session.access_token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ post_id: postId, force: true }),
+          });
+          const r = await res.json().catch(() => ({}));
+          if (res.ok) { load(); }
+          else { btn.textContent = 'Failed — retry'; btn.disabled = false; }
+        } catch (e) {
+          btn.textContent = 'Failed — retry'; btn.disabled = false;
+        }
+      };
+
       const load = async () => {
         const { data, error } = await window.sb
           .from('news_posts')
           .select(`
             id, title, published, email_residents, published_at, created_at,
+            email_sent_at, email_sent_count, email_send_error,
             author:profiles!author_id ( full_name )
           `)
           .order('created_at', { ascending: false });
@@ -77,6 +103,19 @@
             ? el('span', { class: 'admin-status-pill admin-status-pill--published', text: 'Published' })
             : el('span', { class: 'admin-status-pill admin-status-pill--draft', text: 'Draft' });
 
+          // Email status (published posts only). Reflects the real send
+          // recorded by send_news_email, not just whether the toggle was on.
+          let emailMeta = null;
+          if (p.published && p.email_residents) {
+            if (p.email_sent_at) {
+              emailMeta = el('span', { text: `· emailed ${p.email_sent_count ?? ''} · ${fmt.date(p.email_sent_at)}` });
+            } else if (p.email_send_error) {
+              emailMeta = el('span', { style: { color: 'var(--danger, #c0392b)' }, text: '· email failed' });
+            } else {
+              emailMeta = el('span', { style: { color: 'var(--paper-mute)' }, text: '· not emailed yet' });
+            }
+          }
+
           return el('article', { class: 'card liquid-glass admin-row' },
             el('div', { class: 'admin-row__main' },
               el('a', {
@@ -88,7 +127,7 @@
                 status,
                 el('span', { text: fmt.date(dateIso) }),
                 p.author?.full_name ? el('span', { text: p.author.full_name }) : null,
-                p.published && p.email_residents ? el('span', { text: '· emailed' }) : null,
+                emailMeta,
               ),
             ),
             el('div', { class: 'admin-row__actions' },
@@ -102,6 +141,14 @@
                 href: '/admin/news-edit.html?id=' + encodeURIComponent(p.id),
                 text: 'Edit',
               }),
+              (p.published && p.email_residents)
+                ? el('button', {
+                    class: 'btn-mini',
+                    type: 'button',
+                    text: p.email_sent_at ? 'Re-send' : 'Send email',
+                    onclick: (e) => resend(p.id, p.title, e.currentTarget),
+                  })
+                : null,
               el('button', {
                 class: 'btn-mini btn-mini--danger',
                 type: 'button',
