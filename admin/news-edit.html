@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" integrity="sha384-ecIckRi4QlKYya/FQUbBUjS4qp65jF/J87Guw5uzTbO1C1Jfa/6kYmd6dXUF6D7i" crossorigin="anonymous" />
-  <link rel="stylesheet" href="/assets/styles.css?v=18" />
+  <link rel="stylesheet" href="/assets/styles.css?v=19" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="page">
@@ -46,6 +46,16 @@
       </div>
 
       <div id="qeditor"></div>
+
+      <div class="editor-cover" id="attachWrap">
+        <label for="attachFile" style="font-family: var(--mono); font-size: 0.7rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--paper-dim);">
+          Attachments (optional)
+        </label>
+        <div id="attachList" class="attach-list"></div>
+        <input id="attachFile" type="file" multiple
+               accept=".pdf,.xlsx,.xls,.docx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" />
+        <span id="attachHint" class="account-hint">PDF, Word, Excel, or images up to 50 MB. Residents can download these from the post.</span>
+      </div>
 
       <label class="toggle">
         <input id="emailToggle" type="checkbox" checked />
@@ -144,6 +154,108 @@
         pageTitle.textContent = isPublished ? 'Edit post.' : 'Continue draft.';
         deleteBtn.style.display = '';
       }
+
+      // ── Attachments ────────────────────────────────────────────
+      const ATTACH_BUCKET = 'post-attachments';
+      const attachListEl = document.getElementById('attachList');
+      const attachFileEl = document.getElementById('attachFile');
+      const attachHintEl = document.getElementById('attachHint');
+      const ATTACH_HINT  = 'PDF, Word, Excel, or images up to 50 MB. Residents can download these from the post.';
+      const extOf = (name) => (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
+      const ATTACH_MIME = {
+        pdf:'application/pdf',
+        xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        xls:'application/vnd.ms-excel',
+        docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png',
+      };
+      const fmtBytes = (n) => {
+        if (n == null) return '';
+        if (n < 1024) return n + ' B';
+        if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+        return (n / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + ' MB';
+      };
+      let attachments = [];
+
+      const renderAttachments = () => {
+        if (!attachments.length) {
+          mount(attachListEl, el('p', { class: 'attach-empty',
+            text: currentId ? 'No files attached yet.' : 'Pick a file below — a draft saves automatically.' }));
+          return;
+        }
+        mount(attachListEl, ...attachments.map((a) =>
+          el('div', { class: 'attach-row' },
+            el('span', { class: 'attach-row__type', text: (extOf(a.file_name) || 'file').toUpperCase() }),
+            el('span', { class: 'attach-row__name', text: a.file_name }),
+            el('span', { class: 'attach-row__size', text: fmtBytes(a.size_bytes) }),
+            el('button', { class: 'btn-mini btn-mini--danger', type: 'button', text: 'Remove',
+              onclick: () => removeAttachment(a) }),
+          )));
+      };
+
+      const loadAttachments = async () => {
+        if (!currentId) { attachments = []; renderAttachments(); return; }
+        const { data, error } = await window.sb
+          .from('post_attachments')
+          .select('id, file_name, mime_type, size_bytes, storage_path, sort_order')
+          .eq('news_post_id', currentId)
+          .order('sort_order', { ascending: true })
+          .order('created_at', { ascending: true });
+        if (error) { attachHintEl.textContent = 'Couldn’t load attachments: ' + error.message; return; }
+        attachments = data || [];
+        renderAttachments();
+      };
+
+      const removeAttachment = async (a) => {
+        if (!confirm('Remove “' + a.file_name + '”?')) return;
+        const { error: sErr } = await window.sb.storage.from(ATTACH_BUCKET).remove([a.storage_path]);
+        if (sErr) { alert('Couldn’t remove the file: ' + sErr.message); return; }
+        const { error: dErr } = await window.sb.from('post_attachments').delete().eq('id', a.id);
+        if (dErr) { alert('File removed but row delete failed: ' + dErr.message); return; }
+        await loadAttachments();
+      };
+
+      attachFileEl.addEventListener('change', async () => {
+        const files = Array.from(attachFileEl.files || []);
+        if (!files.length) return;
+        // Attachments hang off the post id; create a draft first if needed.
+        if (!currentId) {
+          attachHintEl.textContent = 'Saving a draft so files have somewhere to live…';
+          await save(false);
+          if (!currentId) { attachHintEl.textContent = 'Add a title and body first, then attach files.'; attachFileEl.value = ''; return; }
+        }
+        attachHintEl.textContent = 'Uploading…';
+        let nextSort = attachments.length;
+        for (const file of files) {
+          const ext = extOf(file.name);
+          if (!ATTACH_MIME[ext]) {
+            attachHintEl.textContent = 'Skipped ' + file.name + ' — use PDF, Word, Excel, JPG, or PNG.';
+            continue;
+          }
+          const contentType = ATTACH_MIME[ext];
+          const path = 'news/' + crypto.randomUUID() + '.' + ext;
+          const { error: upErr } = await window.sb.storage.from(ATTACH_BUCKET)
+            .upload(path, file, { contentType, upsert: false });
+          if (upErr) { attachHintEl.textContent = 'Upload failed for ' + file.name + ': ' + upErr.message; continue; }
+          const { error: dbErr } = await window.sb.from('post_attachments').insert({
+            news_post_id: currentId,
+            storage_path: path,
+            file_name: file.name,
+            mime_type: contentType,
+            size_bytes: file.size,
+            sort_order: nextSort++,
+            created_by: session.user.id,
+          });
+          if (dbErr) {
+            await window.sb.storage.from(ATTACH_BUCKET).remove([path]); // avoid orphan
+            attachHintEl.textContent = 'Couldn’t attach ' + file.name + ': ' + dbErr.message;
+            continue;
+          }
+        }
+        attachFileEl.value = '';
+        attachHintEl.textContent = ATTACH_HINT;
+        await loadAttachments();
+      });
 
       const collect = (publish) => {
         const title = titleEl.value.trim();
@@ -246,10 +358,19 @@
       deleteBtn.addEventListener('click', async () => {
         if (!currentId) return;
         if (!confirm('Delete this post for good?')) return;
+        // Remove attachment objects first \u2014 their rows cascade with the post,
+        // but the storage objects would otherwise be orphaned.
+        const { data: atts } = await window.sb.from('post_attachments')
+          .select('storage_path').eq('news_post_id', currentId);
+        if (atts && atts.length) {
+          await window.sb.storage.from(ATTACH_BUCKET).remove(atts.map((a) => a.storage_path));
+        }
         const { error } = await window.sb.from('news_posts').delete().eq('id', currentId);
         if (error) { alert('Couldn\u2019t delete: ' + error.message); return; }
         location.href = '/admin/news.html';
       });
+
+      await loadAttachments();
     })();
   </script>
 </body>

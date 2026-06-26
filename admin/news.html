@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=18" />
+  <link rel="stylesheet" href="/assets/styles.css?v=19" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="page">
@@ -155,6 +155,14 @@
                 text: 'Delete',
                 onclick: async () => {
                   if (!confirm('Delete "' + (p.title || 'Untitled') + '"?')) return;
+                  // Remove attachment objects first \u2014 rows cascade with the
+                  // post, but the storage objects would otherwise be orphaned.
+                  const { data: atts } = await window.sb.from('post_attachments')
+                    .select('storage_path').eq('news_post_id', p.id);
+                  if (atts && atts.length) {
+                    await window.sb.storage.from('post-attachments')
+                      .remove(atts.map((a) => a.storage_path));
+                  }
                   const { error: dErr } = await window.sb
                     .from('news_posts').delete().eq('id', p.id);
                   if (dErr) { alert('Couldn\u2019t delete: ' + dErr.message); return; }

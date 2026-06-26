@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=18" />
+  <link rel="stylesheet" href="/assets/styles.css?v=19" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="page">
@@ -84,6 +84,45 @@
       // the input contained <script> or onclick it gets stripped.
       body.appendChild(renderRichText(post.body));
 
+      // Attachments the board added to this post (private bucket, signed URLs).
+      let attachSection = null;
+      const { data: atts } = await window.sb
+        .from('post_attachments')
+        .select('id, file_name, size_bytes, storage_path, sort_order')
+        .eq('news_post_id', post.id)
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true });
+      if (atts && atts.length) {
+        const fmtBytes = (n) => {
+          if (n == null) return '';
+          if (n < 1024) return n + ' B';
+          if (n < 1024 * 1024) return Math.round(n / 1024) + ' KB';
+          return (n / (1024 * 1024)).toFixed(1).replace(/\.0$/, '') + ' MB';
+        };
+        const badge = (name) => (name.includes('.') ? name.split('.').pop() : 'file').toUpperCase();
+        const rows = [];
+        for (const a of atts) {
+          const { data: signed } = await window.sb.storage.from('post-attachments')
+            .createSignedUrl(a.storage_path, 3600, { download: a.file_name });
+          const href = signed?.signedUrl || null;
+          const inner = [
+            el('span', { class: 'doc-row__type', text: badge(a.file_name) }),
+            el('span', { class: 'doc-row__body' },
+              el('span', { class: 'doc-row__title', text: a.file_name })),
+            el('span', { class: 'doc-row__meta' },
+              el('span', { class: 'doc-row__size',
+                text: href ? fmtBytes(a.size_bytes) : 'unavailable' })),
+          ];
+          rows.push(href
+            ? el('a', { class: 'doc-row liquid-glass', href, download: a.file_name }, ...inner)
+            : el('div', { class: 'doc-row liquid-glass doc-row--off' }, ...inner));
+        }
+        attachSection = el('div', { class: 'article__attachments' },
+          el('h2', { class: 'article__attachments-title',
+            text: atts.length === 1 ? 'Attachment' : 'Attachments' }),
+          el('div', { class: 'docs-list' }, ...rows));
+      }
+
       const dateIso = post.published_at || post.created_at;
       mount(content,
         el('div', { class: 'article__meta' },
@@ -95,6 +134,7 @@
         el('h1', { class: 'article__title', text: post.title }),
         cover,
         body,
+        attachSection,
         el('div', { class: 'article__byline', text: '— ' + author }),
       );
     })();

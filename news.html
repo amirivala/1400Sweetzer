@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=18" />
+  <link rel="stylesheet" href="/assets/styles.css?v=19" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="page">
@@ -75,6 +75,19 @@
         return;
       }
 
+      // Tally attachment counts so cards can show a 📎 badge.
+      const counts = {};
+      const ids = posts.map((p) => p.id);
+      if (ids.length) {
+        const { data: atts } = await window.sb
+          .from('post_attachments')
+          .select('news_post_id')
+          .in('news_post_id', ids);
+        (atts || []).forEach((a) => {
+          if (a.news_post_id) counts[a.news_post_id] = (counts[a.news_post_id] || 0) + 1;
+        });
+      }
+
       list.className = 'news-grid news-grid--featured-first';
 
       const cards = posts.map((p, idx) => {
@@ -89,6 +102,10 @@
             el('time', { datetime: dateIso, text: fmt.date(dateIso) }),
             el('span', { 'aria-hidden': 'true', text: '·' }),
             el('span', { text: author }),
+            counts[p.id]
+              ? el('span', { class: 'news-card__attach', title: 'Has attachments',
+                  text: '· 📎 ' + counts[p.id] })
+              : null,
           ),
           el('a', {
             class: 'news-card__title',

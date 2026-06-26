@@ -1049,6 +1049,121 @@ button { background: none; border: 0; cursor: pointer; }
   .doc-row__meta { grid-column: 1 / -1; justify-content: flex-end; }
 }
 
+/* ---------- Post & bulletin attachments ---------------------- */
+/* Attachments block at the foot of an article (post.html) */
+.article__attachments {
+  margin-top: 2.4rem;
+  padding-top: 1.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.article__attachments-title {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+  margin: 0;
+}
+.article__attachments .docs-list { margin-top: 1rem; }
+
+/* Uploaded-files list in the news editor (admin/news-edit.html) */
+.attach-list { display: grid; gap: 0.5rem; margin: 0.7rem 0 0.6rem; }
+.attach-empty { font-size: 0.85rem; color: var(--paper-mute); font-weight: 300; margin: 0; }
+.attach-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+.attach-row__type {
+  font-family: var(--mono);
+  font-size: 0.58rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--paper);
+  padding: 0.35rem 0.5rem;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  min-width: 3rem;
+  text-align: center;
+}
+.attach-row__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--paper);
+  font-size: 0.95rem;
+}
+.attach-row__size {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  color: var(--paper-mute);
+  white-space: nowrap;
+  text-transform: uppercase;
+}
+
+/* Attachment chips on a bulletin card (bulletin.html) */
+.bulletin-card__files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0.2rem 0 0.6rem;
+}
+.attach-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  max-width: 100%;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--paper);
+  text-decoration: none;
+  font-size: 0.82rem;
+  transition: background 0.2s var(--ease), transform 0.18s var(--ease);
+}
+.attach-chip:hover { background: rgba(255, 255, 255, 0.1); transform: translateY(-1px); }
+.attach-chip--off { color: var(--paper-mute); cursor: default; opacity: 0.7; }
+.attach-chip--off:hover { background: rgba(255, 255, 255, 0.06); transform: none; }
+.doc-row--off { color: var(--paper-mute); cursor: default; }
+.doc-row--off:hover { transform: none; background: none; }
+.attach-chip__icon { font-size: 0.8rem; line-height: 1; }
+.attach-chip__name {
+  min-width: 0;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Attachment count badge on a news card (news.html) */
+.news-card__attach { color: var(--paper-mute); white-space: nowrap; }
+
+/* File inputs — make the native control legible on the dark theme */
+input[type="file"] { color: var(--paper-mute); font-size: 0.85rem; max-width: 100%; }
+input[type="file"]::file-selector-button {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--paper);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-pill);
+  padding: 0.5rem 0.9rem;
+  margin-right: 0.8rem;
+  cursor: pointer;
+  transition: background 0.2s var(--ease);
+}
+input[type="file"]::file-selector-button:hover { background: rgba(255, 255, 255, 0.14); }
+
 /* ---------- History page (public) ---------------------------- */
 .hist-shell {
   position: relative;

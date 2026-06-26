@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=18" />
+  <link rel="stylesheet" href="/assets/styles.css?v=19" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="page">
@@ -72,9 +72,16 @@
           </select>
         </div>
 
-        <div class="account-row" style="margin-bottom: 0.4rem;">
+        <div class="account-row" style="margin-bottom: 0.8rem;">
           <label for="b_body">Details</label>
           <textarea id="b_body" required maxlength="2000" placeholder="A few sentences. Phone or email if you want a reply."></textarea>
+        </div>
+
+        <div class="account-row" style="margin-bottom: 0.4rem;">
+          <label for="b_files">Photos / files (optional)</label>
+          <input id="b_files" type="file" multiple
+                 accept=".pdf,.xlsx,.xls,.docx,.jpg,.jpeg,.png,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png" />
+          <span class="account-hint">Add a photo (for sale items, lost &amp; found) or a file. Up to 50 MB each.</span>
         </div>
 
         <div class="modal-actions">
@@ -133,6 +140,17 @@
 
       let active = 'All';
       let posts  = [];
+      let attByBulletin = {};   // bulletin_id -> [{ file_name, size_bytes, storage_path, href }]
+
+      const ATTACH_BUCKET = 'post-attachments';
+      const extOf = (name) => (name.includes('.') ? name.split('.').pop() : '').toLowerCase();
+      const ATTACH_MIME = {
+        pdf:'application/pdf',
+        xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        xls:'application/vnd.ms-excel',
+        docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        jpg:'image/jpeg', jpeg:'image/jpeg', png:'image/png',
+      };
 
       const load = async () => {
         const { data, error } = await window.sb
@@ -152,6 +170,25 @@
           return;
         }
         posts = data || [];
+
+        // Fetch attachments for the loaded bulletins and pre-sign their URLs.
+        attByBulletin = {};
+        const ids = posts.map((p) => p.id);
+        if (ids.length) {
+          const { data: atts } = await window.sb
+            .from('post_attachments')
+            .select('id, bulletin_id, file_name, size_bytes, storage_path, sort_order, created_at')
+            .in('bulletin_id', ids)
+            .order('sort_order', { ascending: true })
+            .order('created_at', { ascending: true });
+          for (const a of atts || []) {
+            const { data: signed } = await window.sb.storage.from(ATTACH_BUCKET)
+              .createSignedUrl(a.storage_path, 3600, { download: a.file_name });
+            a.href = signed?.signedUrl || '#';
+            (attByBulletin[a.bulletin_id] ||= []).push(a);
+          }
+        }
+
         render();
       };
 
@@ -194,6 +231,12 @@
                     text: '×',
                     onclick: async () => {
                       if (!confirm('Delete this post?')) return;
+                      // Remove attachment objects first; their rows cascade.
+                      const atts = attByBulletin[p.id] || [];
+                      if (atts.length) {
+                        await window.sb.storage.from(ATTACH_BUCKET)
+                          .remove(atts.map((a) => a.storage_path));
+                      }
                       const { error } = await window.sb
                         .from('bulletins').delete().eq('id', p.id);
                       if (error) { alert('Couldn\u2019t delete: ' + error.message); return; }
@@ -204,6 +247,22 @@
             ),
             el('h2', { class: 'bulletin-card__title', text: p.title }),
             el('p',  { class: 'bulletin-card__body',  text: p.body }),
+            (attByBulletin[p.id] && attByBulletin[p.id].length)
+              ? el('div', { class: 'bulletin-card__files' },
+                  ...attByBulletin[p.id].map((a) =>
+                    a.href === '#'
+                      ? el('span', { class: 'attach-chip attach-chip--off', title: 'File unavailable' },
+                          el('span', { class: 'attach-chip__icon', 'aria-hidden': 'true', text: '\ud83d\udcce' }),
+                          el('span', { class: 'attach-chip__name', text: a.file_name + ' (unavailable)' }))
+                      : el('a', {
+                          class: 'attach-chip',
+                          href: a.href,
+                          title: a.file_name,
+                          download: a.file_name,
+                        },
+                        el('span', { class: 'attach-chip__icon', 'aria-hidden': 'true', text: '\ud83d\udcce' }),
+                        el('span', { class: 'attach-chip__name', text: a.file_name }))))
+              : null,
             el('div', { class: 'bulletin-card__byline' },
               el('span', { text: author + unit }),
               el('span', { 'aria-hidden': 'true', text: '·' }),
@@ -264,9 +323,44 @@
           return;
         }
 
-        const { error } = await window.sb.from('bulletins').insert(insert);
+        const { data: created, error } = await window.sb
+          .from('bulletins').insert(insert).select('id').single();
+        if (error || !created) {
+          submitBtn.disabled = false;
+          formError.textContent = 'Couldn\u2019t post: ' + (error?.message || 'unknown error');
+          return;
+        }
+
+        // Upload any attached files and link them to the new bulletin.
+        const files = Array.from(document.getElementById('b_files').files || []);
+        let attachFailed = false;
+        let sort = 0;
+        for (const file of files) {
+          const ext = extOf(file.name);
+          if (!ATTACH_MIME[ext]) { attachFailed = true; continue; }
+          const contentType = ATTACH_MIME[ext];
+          const path = 'bulletins/' + crypto.randomUUID() + '.' + ext;
+          const { error: upErr } = await window.sb.storage.from(ATTACH_BUCKET)
+            .upload(path, file, { contentType, upsert: false });
+          if (upErr) { attachFailed = true; continue; }
+          const { error: aErr } = await window.sb.from('post_attachments').insert({
+            bulletin_id: created.id,
+            storage_path: path,
+            file_name: file.name,
+            mime_type: contentType,
+            size_bytes: file.size,
+            sort_order: sort++,
+            created_by: meId,
+          });
+          if (aErr) { await window.sb.storage.from(ATTACH_BUCKET).remove([path]); attachFailed = true; }
+        }
+
         submitBtn.disabled = false;
-        if (error) { formError.textContent = 'Couldn\u2019t post: ' + error.message; return; }
+        // The post is already saved; warn (via a blocking alert so it's
+        // actually seen) before the dialog closes if any file dropped.
+        if (attachFailed) {
+          alert('Your post was published, but one or more files didn\u2019t upload. Allowed types are PDF, Word, Excel, JPG, and PNG, up to 50 MB each.');
+        }
 
         closeDialog();
         load();
