@@ -1,0 +1,22 @@
+# Prevents Supabase's free-tier inactivity pause (projects with no API
+# activity for ~7 days get paused). A daily REST query counts as activity.
+# Uses the publishable (anon) key, which is public — it ships in assets/env.js.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '23 7 * * *' # daily at 07:23 UTC (off the top of the hour per GitHub's advice)
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Supabase REST API
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            "https://nvazngprbjccclzmgphg.supabase.co/rest/v1/news_posts?select=id&limit=1" \
+            -H "apikey: sb_publishable_Dm9QjMYym_e0kwzMo4v3fA_WPangWJB" \
+            -H "Authorization: Bearer sb_publishable_Dm9QjMYym_e0kwzMo4v3fA_WPangWJB")
+          echo "Supabase responded with HTTP $code"
+          test "$code" = "200"
