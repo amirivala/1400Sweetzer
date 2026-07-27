@@ -1,9 +1,10 @@
 // supabase/functions/send_news_email/index.ts
 //
-// Called by /admin/news-edit.html after an admin publishes a news post
-// (when the "Email residents" toggle is on). Verifies the caller is an
-// approved admin, then sends a notification email via Resend to every
-// approved resident who hasn't opted out.
+// Fired by the news_posts publish trigger (shared secret), or by an admin
+// from /admin/news.html to re-send. Sends a notification email via Resend
+// to every approved resident who hasn't opted out — or, when the post's
+// email_audience is 'owners', only to those whose roster row says they own
+// their unit (see migration 00028).
 //
 // Required Supabase secrets (set with `supabase secrets set ...`):
 //   RESEND_API_KEY              — your Resend API key
@@ -43,7 +44,12 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-function buildEmail(post: { id: string; title: string; body: string; cover_image_url: string | null }) {
+type Audience = 'all' | 'owners';
+
+function buildEmail(
+  post: { id: string; title: string; body: string; cover_image_url: string | null },
+  audience: Audience,
+) {
   const plain = String(post.body || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   const excerpt = plain.length > 260 ? plain.slice(0, 260).trimEnd() + '\u2026' : plain;
   const url = `${SITE_URL}/post.html?id=${encodeURIComponent(post.id)}`;
@@ -52,6 +58,13 @@ function buildEmail(post: { id: string; title: string; body: string; cover_image
   const safeExcerpt = escapeHtml(excerpt);
   const safeUrl = escapeHtml(url);
   const safePrefs = escapeHtml(prefsUrl);
+  // Owners-only notices say so, so a recipient knows why a neighbour who
+  // rents didn't get the same email.
+  const kicker = audience === 'owners' ? 'Homeowner Notice' : 'Resident Notice';
+  const reason = audience === 'owners'
+    ? 'You’re receiving this because you own a unit at 1400 N Sweetzer Ave and have HOA emails turned on. This notice went to homeowners only.'
+    : 'You’re receiving this because you live at 1400 N Sweetzer Ave and have resident-news emails turned on.';
+  const safeReason = escapeHtml(reason);
 
   // Email-safe cover: fixed inner width (card 600px − 2×44px padding = 512px),
   // display:block kills the phantom baseline, border:0 kills the Outlook border.
@@ -140,7 +153,7 @@ function buildEmail(post: { id: string; title: string; body: string; cover_image
               </td>
               <td style="vertical-align:middle;padding-left:14px;">
                 <div class="sp-ink" style="color:#1c150f;font-family:Georgia,'Times New Roman',serif;font-style:italic;font-weight:500;font-size:18px;line-height:1.15;">Sunset Penthouse</div>
-                <div class="sp-kicker" style="margin-top:3px;color:#b94a2c;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.24em;text-transform:uppercase;line-height:1;">Resident Notice</div>
+                <div class="sp-kicker" style="margin-top:3px;color:#b94a2c;font-family:ui-monospace,'SF Mono',Menlo,Consolas,monospace;font-size:10px;letter-spacing:0.24em;text-transform:uppercase;line-height:1;">${escapeHtml(kicker)}</div>
               </td>
             </tr>
           </table>
@@ -192,7 +205,7 @@ function buildEmail(post: { id: string; title: string; body: string; cover_image
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:10px;">
             <tr>
               <td class="sp-muted" style="color:#80715f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:12px;line-height:1.65;">
-                You're receiving this because you live at 1400 N Sweetzer Ave and have resident-news emails turned on.
+                ${safeReason}
                 <a href="${safePrefs}" style="color:#b94a2c;text-decoration:underline;">Manage email preferences</a>.
               </td>
             </tr>
@@ -216,7 +229,7 @@ function buildEmail(post: { id: string; title: string; body: string; cover_image
 </html>`;
 
   const text = [
-    `SUNSET PENTHOUSE  ·  RESIDENT NOTICE`,
+    `SUNSET PENTHOUSE  ·  ${kicker.toUpperCase()}`,
     ``,
     post.title,
     ``,
@@ -226,6 +239,7 @@ function buildEmail(post: { id: string; title: string; body: string; cover_image
     ``,
     `—`,
     `1400 N Sweetzer Ave · West Hollywood, CA`,
+    reason,
     `Manage email preferences: ${prefsUrl}`,
   ].join('\n');
 
@@ -261,11 +275,15 @@ Deno.serve(async (req) => {
   }
 
   // --- Payload ---
-  let body: { post_id?: string; force?: boolean };
+  let body: { post_id?: string; force?: boolean; dry_run?: boolean };
   try { body = await req.json(); }
   catch { return new Response('Bad JSON', { status: 400, headers: corsHeaders }); }
   const postId = body.post_id;
   const force = body.force === true;
+  // dry_run resolves the audience and returns the recipient list without
+  // sending anything or touching email_sent_at — how you confirm an
+  // owners-only post really does leave the tenants off.
+  const dryRun = body.dry_run === true;
   if (!postId) return new Response('Missing post_id', { status: 400, headers: corsHeaders });
 
   const json = (obj: unknown, status = 200) =>
@@ -276,32 +294,55 @@ Deno.serve(async (req) => {
   // --- Fetch post + re-check send conditions against the DB ---
   const { data: post, error: postErr } = await admin
     .from('news_posts')
-    .select('id, title, body, cover_image_url, published, email_residents, email_sent_at')
+    .select('id, title, body, cover_image_url, published, email_residents, email_audience, email_sent_at')
     .eq('id', postId).single();
   if (postErr || !post) return json({ ok: false, error: 'Post not found' }, 404);
 
-  if (!post.published)       return json({ ok: true, sent: 0, skipped: true, reason: 'not_published' });
-  if (!post.email_residents) return json({ ok: true, sent: 0, skipped: true, reason: 'email_off' });
-  if (post.email_sent_at && !force) {
-    return json({ ok: true, sent: 0, skipped: true, reason: 'already_sent' });
+  if (!dryRun) {
+    if (!post.published)       return json({ ok: true, sent: 0, skipped: true, reason: 'not_published' });
+    if (!post.email_residents) return json({ ok: true, sent: 0, skipped: true, reason: 'email_off' });
+    if (post.email_sent_at && !force) {
+      return json({ ok: true, sent: 0, skipped: true, reason: 'already_sent' });
+    }
   }
 
   // --- Recipients: approved, opted-in residents with an email ---
+  const audience: Audience = post.email_audience === 'owners' ? 'owners' : 'all';
+
   const { data: profiles } = await admin
     .from('profiles').select('id').eq('status', 'approved').eq('email_news_optin', true);
-  const optInIds = new Set((profiles || []).map((p) => p.id));
+  let optInIds = new Set((profiles || []).map((p) => p.id));
+
+  // Owners-only: keep just the profiles whose roster row says 'owner', so
+  // tenants are left off HOA-business notices (assessments, insurance,
+  // votes). Ownership has to be confirmable — a profile with no roster row
+  // is excluded rather than assumed to be an owner. Approval always links a
+  // roster row, so that set should be empty; the editor shows the count
+  // either way.
+  if (audience === 'owners') {
+    const { data: roster } = await admin
+      .from('residents').select('profile_id').eq('occupancy_type', 'owner')
+      .not('profile_id', 'is', null);
+    const ownerIds = new Set((roster || []).map((r) => r.profile_id as string));
+    optInIds = new Set([...optInIds].filter((id) => ownerIds.has(id)));
+  }
+
   // listUsers gives us emails. 1000 per page is plenty for one building.
   const { data: usersPage } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
   const recipients = (usersPage?.users || [])
     .filter((u) => optInIds.has(u.id) && !!u.email)
     .map((u) => u.email!);
 
+  if (dryRun) {
+    return json({ ok: true, dry_run: true, audience, would_send: recipients.length, recipients });
+  }
+
   if (recipients.length === 0) {
-    return json({ ok: true, sent: 0, skipped: true, reason: 'no_recipients' });
+    return json({ ok: true, sent: 0, skipped: true, reason: 'no_recipients', audience });
   }
 
   // --- Send via Resend's batch endpoint ---
-  const { html, text } = buildEmail(post);
+  const { html, text } = buildEmail(post, audience);
   const fromHeader = `${FROM_NAME} <${FROM_EMAIL}>`;
   const batch = recipients.map((to) => ({
     from: fromHeader, reply_to: REPLY_TO, to, subject: post.title, html, text,
@@ -329,7 +370,7 @@ Deno.serve(async (req) => {
       email_sent_count: recipients.length,
       email_send_error: null,
     }).eq('id', postId);
-    return json({ ok: true, sent: recipients.length, resend: resendParsed });
+    return json({ ok: true, sent: recipients.length, audience, resend: resendParsed });
   } else {
     const errText = (typeof resendParsed === 'string' ? resendParsed : JSON.stringify(resendParsed)).slice(0, 500);
     await admin.from('news_posts').update({ email_send_error: errText }).eq('id', postId);

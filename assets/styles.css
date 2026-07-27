@@ -1959,6 +1959,56 @@ input[type="file"]::file-selector-button:hover { background: rgba(255, 255, 255,
 .toggle input:checked ~ .toggle__switch { background: var(--terracotta); }
 .toggle input:checked ~ .toggle__switch::after { transform: translateX(18px); }
 
+/* Audience picker — sits under the "email residents" toggle in the news
+   editor and scopes the send (all residents vs. homeowners only). */
+.audience {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.85rem 1rem;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.audience[hidden] { display: none; }
+.audience__label {
+  font-family: var(--mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--paper-dim);
+}
+.audience__opts { display: grid; gap: 0.35rem; }
+.audience__opt {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.18s var(--ease), border-color 0.18s var(--ease);
+}
+.audience__opt:hover { background: rgba(255, 255, 255, 0.04); }
+.audience__opt input { accent-color: var(--terracotta); margin: 0; flex-shrink: 0; }
+.audience__opt:has(input:checked) {
+  background: rgba(217, 106, 63, 0.12);
+  border-color: rgba(217, 106, 63, 0.35);
+}
+.audience__opt-name { color: var(--paper); font-size: 0.9rem; }
+.audience__opt-count {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  color: var(--paper-dim);
+  margin-left: auto;
+  white-space: nowrap;
+}
+.audience__note {
+  margin: 0;
+  color: var(--paper-dim);
+  font-size: 0.8rem;
+  line-height: 1.45;
+}
+
 .account-actions {
   display: flex;
   gap: 0.6rem;

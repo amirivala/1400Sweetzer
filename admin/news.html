@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
-  <link rel="stylesheet" href="/assets/styles.css?v=19" />
+  <link rel="stylesheet" href="/assets/styles.css?v=20" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="page">
@@ -45,10 +45,16 @@
     (async () => {
       const list = document.getElementById('postList');
 
+      const ownersOnly = (p) => p.email_audience === 'owners';
+
       // Re-send a post's resident email via send_news_email (admin JWT,
       // force:true). Used for recovery when a send failed or never ran.
-      const resend = async (postId, title, btn) => {
-        if (!confirm('Re-send the email for "' + (title || 'Untitled') + '" to all opted-in residents?')) return;
+      // The audience comes from the post row, so a re-send honors it too.
+      const resend = async (postId, title, audience, btn) => {
+        const who = audience === 'owners'
+          ? 'opted-in homeowners (tenants excluded)'
+          : 'all opted-in residents';
+        if (!confirm('Re-send the email for "' + (title || 'Untitled') + '" to ' + who + '?')) return;
         btn.disabled = true;
         const original = btn.textContent;
         btn.textContent = 'Sending…';
@@ -74,7 +80,7 @@
         const { data, error } = await window.sb
           .from('news_posts')
           .select(`
-            id, title, published, email_residents, published_at, created_at,
+            id, title, published, email_residents, email_audience, published_at, created_at,
             email_sent_at, email_sent_count, email_send_error,
             author:profiles!author_id ( full_name )
           `)
@@ -107,12 +113,15 @@
           // recorded by send_news_email, not just whether the toggle was on.
           let emailMeta = null;
           if (p.published && p.email_residents) {
+            const who = ownersOnly(p) ? 'homeowners' : 'residents';
             if (p.email_sent_at) {
-              emailMeta = el('span', { text: `· emailed ${p.email_sent_count ?? ''} · ${fmt.date(p.email_sent_at)}` });
+              emailMeta = el('span', {
+                text: `· emailed ${p.email_sent_count ?? ''} ${who} · ${fmt.date(p.email_sent_at)}`,
+              });
             } else if (p.email_send_error) {
               emailMeta = el('span', { style: { color: 'var(--danger, #c0392b)' }, text: '· email failed' });
             } else {
-              emailMeta = el('span', { style: { color: 'var(--paper-mute)' }, text: '· not emailed yet' });
+              emailMeta = el('span', { style: { color: 'var(--paper-mute)' }, text: `· ${who} not emailed yet` });
             }
           }
 
@@ -146,7 +155,7 @@
                     class: 'btn-mini',
                     type: 'button',
                     text: p.email_sent_at ? 'Re-send' : 'Send email',
-                    onclick: (e) => resend(p.id, p.title, e.currentTarget),
+                    onclick: (e) => resend(p.id, p.title, p.email_audience, e.currentTarget),
                   })
                 : null,
               el('button', {

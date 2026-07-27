@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..700,30..100;1,9..144,300..700,30..100&family=Geist+Mono:wght@400;500&family=Geist:wght@300;400;500;600&display=swap" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/quill@2.0.3/dist/quill.snow.css" integrity="sha384-ecIckRi4QlKYya/FQUbBUjS4qp65jF/J87Guw5uzTbO1C1Jfa/6kYmd6dXUF6D7i" crossorigin="anonymous" />
-  <link rel="stylesheet" href="/assets/styles.css?v=19" />
+  <link rel="stylesheet" href="/assets/styles.css?v=20" />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 </head>
 <body class="page">
@@ -20,8 +20,8 @@
       <span class="page-header__kicker">Admin · News</span>
       <h1 class="page-header__title" id="pageTitle">Write a post.</h1>
       <p class="page-header__sub">
-        Save as a draft, or publish to push it to the news feed (and email
-        residents if you tick the box).
+        Save as a draft, or publish to push it to the news feed — and email
+        it out to everyone, or to homeowners only.
       </p>
     </header>
 
@@ -66,6 +66,26 @@
         <span class="toggle__switch" aria-hidden="true"></span>
       </label>
 
+      <div class="audience" id="audienceWrap">
+        <span class="audience__label" id="audienceLabel">Who gets this email</span>
+        <div class="audience__opts" role="radiogroup" aria-labelledby="audienceLabel">
+          <label class="audience__opt">
+            <input type="radio" name="audience" value="all" checked />
+            <span class="audience__opt-name">All residents</span>
+            <span class="audience__opt-count" id="countAll">—</span>
+          </label>
+          <label class="audience__opt">
+            <input type="radio" name="audience" value="owners" />
+            <span class="audience__opt-name">Homeowners only</span>
+            <span class="audience__opt-count" id="countOwners">—</span>
+          </label>
+        </div>
+        <p class="audience__note" id="audienceNote">
+          Homeowners only leaves out residents the roster marks as tenants — use it for
+          assessments, insurance, budgets, and votes.
+        </p>
+      </div>
+
       <div class="editor-actions">
         <a class="btn-mini" href="/admin/news.html">← All posts</a>
         <span class="spacer"></span>
@@ -97,6 +117,16 @@
       const titleEl  = document.getElementById('title');
       const coverEl  = document.getElementById('cover');
       const emailEl  = document.getElementById('emailToggle');
+      const audienceWrap = document.getElementById('audienceWrap');
+      const audienceNote = document.getElementById('audienceNote');
+      const countAllEl    = document.getElementById('countAll');
+      const countOwnersEl = document.getElementById('countOwners');
+      const audienceInputs = () => audienceWrap.querySelectorAll('input[name="audience"]');
+      const getAudience = () =>
+        audienceWrap.querySelector('input[name="audience"]:checked')?.value || 'all';
+      const setAudience = (value) => {
+        audienceInputs().forEach((i) => { i.checked = i.value === value; });
+      };
       const statusEl = document.getElementById('status');
       const draftBtn = document.getElementById('draftBtn');
       const publishBtn = document.getElementById('publishBtn');
@@ -133,7 +163,7 @@
         // Editing existing
         const { data: post, error } = await window.sb
           .from('news_posts')
-          .select('id, title, body, cover_image_url, published, email_residents, published_at, email_sent_at')
+          .select('id, title, body, cover_image_url, published, email_residents, email_audience, published_at, email_sent_at')
           .eq('id', currentId).single();
         if (error || !post) {
           statusEl.textContent = 'Couldn\u2019t load post: ' + (error?.message || 'not found');
@@ -142,6 +172,7 @@
         titleEl.value     = post.title || '';
         coverEl.value     = post.cover_image_url || '';
         emailEl.checked   = !!post.email_residents;
+        setAudience(post.email_audience === 'owners' ? 'owners' : 'all');
         isPublished       = !!post.published;
         hasPublishedAt    = !!post.published_at;
         hasEmailSent      = !!post.email_sent_at;
@@ -154,6 +185,40 @@
         pageTitle.textContent = isPublished ? 'Edit post.' : 'Continue draft.';
         deleteBtn.style.display = '';
       }
+
+      // ── Email audience ─────────────────────────────────────────
+      // The picker only matters when the email is on. Counts come from the
+      // news_recipient_counts RPC so the board sees the size of each
+      // audience before publishing — and would spot a wrong number.
+      const AUDIENCE_NOTE = 'Homeowners only leaves out residents the roster marks as tenants '
+        + '— use it for assessments, insurance, budgets, and votes.';
+
+      const syncAudience = () => {
+        audienceWrap.hidden = !emailEl.checked;
+      };
+      emailEl.addEventListener('change', syncAudience);
+      syncAudience();
+
+      (async () => {
+        const { data, error } = await window.sb.rpc('news_recipient_counts');
+        if (error || !data) return; // counts are a nicety; never block publishing
+        const n = (v) => (typeof v === 'number' ? v : 0);
+        const plural = (v, word) => `${v} ${word}${v === 1 ? '' : 's'}`;
+        countAllEl.textContent    = plural(n(data.all), 'recipient');
+        countOwnersEl.textContent = plural(n(data.owners), 'recipient');
+        const parts = hasEmailSent
+          ? ['This post’s email already went out — changing the audience here only affects a '
+             + 'Re-send from the posts list.']
+          : [AUDIENCE_NOTE];
+        if (n(data.tenants) > 0) {
+          parts.push(`Right now that leaves out ${plural(n(data.tenants), 'tenant')}.`);
+        }
+        if (n(data.unlinked) > 0) {
+          parts.push(`${plural(n(data.unlinked), 'account')} aren’t linked to a roster entry, `
+            + 'so homeowners-only leaves them out too — link them under Residents to include them.');
+        }
+        audienceNote.textContent = parts.join(' ');
+      })();
 
       // ── Attachments ────────────────────────────────────────────
       const ATTACH_BUCKET = 'post-attachments';
@@ -271,6 +336,7 @@
           author_id: session.user.id,
           published: publish,
           email_residents: emailEl.checked,
+          email_audience: getAudience(),
         };
         // Stamp published_at on first publish, and also self-heal any
         // existing published row whose stamp is missing (e.g. from the
@@ -284,7 +350,8 @@
       // The browser no longer sends it (that was fragile \u2014 a closed tab lost
       // the email). We just poll the row briefly to confirm it went out.
       const pollSent = async (postId) => {
-        statusEl.textContent = 'Published \u2713 \u00b7 emailing residents\u2026';
+        const who = getAudience() === 'owners' ? 'homeowners' : 'residents';
+        statusEl.textContent = `Published \u2713 \u00b7 emailing ${who}\u2026`;
         for (let i = 0; i < 6; i++) {
           await new Promise((r) => setTimeout(r, 2500));
           const { data } = await window.sb
@@ -293,7 +360,10 @@
             .eq('id', postId).single();
           if (data?.email_sent_at) {
             const n = data.email_sent_count || 0;
-            statusEl.textContent = `Published \u2713 \u00b7 emailed ${n} resident${n === 1 ? '' : 's'}`;
+            const noun = getAudience() === 'owners'
+              ? `homeowner${n === 1 ? '' : 's'}`
+              : `resident${n === 1 ? '' : 's'}`;
+            statusEl.textContent = `Published \u2713 \u00b7 emailed ${n} ${noun}`;
             hasEmailSent = true;
             return;
           }
