@@ -56,6 +56,28 @@ The SPF record authorizes both ImprovMX (inbound forwarding) and Resend
 (outbound site emails) to handle mail for the domain. Keep them on a
 single TXT record — multiple SPF TXT records break authentication.
 
+## Keeping Supabase awake
+
+Supabase pauses free-plan projects after ~7 days of low API activity. A paused
+project takes the whole portal down (sign-in, directory, news, calendar) until
+someone manually restores it from the Supabase dashboard.
+
+`.github/workflows/supabase-keepalive.yml` prevents that: a scheduled GitHub
+Action runs a one-row REST query against `news_posts` every day at 07:23 UTC,
+which counts as activity. It uses the publishable (anon) key, which is public
+anyway — it ships in `assets/env.js`.
+
+**Caveat — the 60-day rule.** GitHub automatically disables scheduled workflows
+in public repos after 60 days with no repository activity, and emails the owner
+a few days beforehand. If the keep-alive is disabled, Supabase will pause
+roughly a week later. Two ways to keep it alive:
+
+- Push any commit to `main` — that resets the 60-day clock.
+- Or re-enable it from the repo's **Actions → Supabase keep-alive** page, or
+  with `gh workflow enable supabase-keepalive.yml`.
+
+To verify it is still running: `gh run list --workflow=supabase-keepalive.yml`.
+
 ## Bootstrap (one-time)
 
 After running migrations, manually promote the first admin in Supabase SQL Editor:
