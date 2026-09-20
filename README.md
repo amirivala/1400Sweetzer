@@ -62,21 +62,28 @@ Supabase pauses free-plan projects after ~7 days of low API activity. A paused
 project takes the whole portal down (sign-in, directory, news, calendar) until
 someone manually restores it from the Supabase dashboard.
 
-`.github/workflows/supabase-keepalive.yml` prevents that: a scheduled GitHub
-Action runs a one-row REST query against `news_posts` every day at 07:23 UTC,
-which counts as activity. It uses the publishable (anon) key, which is public
-anyway — it ships in `assets/env.js`.
+`api/keepalive.js` prevents that. It runs a one-row REST query against
+`news_posts`, which counts as activity, and the `crons` entry in `vercel.json`
+invokes it once a day at 07:23 UTC. (Hobby-plan crons fire anywhere within the
+scheduled hour, which is fine here.) The function uses the publishable key from
+`assets/env.js` — public by design.
 
-**Caveat — the 60-day rule.** GitHub automatically disables scheduled workflows
-in public repos after 60 days with no repository activity, and emails the owner
-a few days beforehand. If the keep-alive is disabled, Supabase will pause
-roughly a week later. Two ways to keep it alive:
+This is the only serverless function in an otherwise static site. To check on
+it: **Vercel → project → Settings → Cron Jobs**, or hit it directly:
 
-- Push any commit to `main` — that resets the 60-day clock.
-- Or re-enable it from the repo's **Actions → Supabase keep-alive** page, or
-  with `gh workflow enable supabase-keepalive.yml`.
+```
+curl -s https://1400nsweetzer.com/api/keepalive
+{"ok":true,"supabase":200}
+```
 
-To verify it is still running: `gh run list --workflow=supabase-keepalive.yml`.
+The endpoint is unauthenticated because it only performs a public read. To lock
+it down, set a `CRON_SECRET` env var on the Vercel project — Vercel then sends
+it as a bearer token automatically and the function starts rejecting everything
+else. No code change needed.
+
+This replaced a GitHub Actions scheduled workflow, which GitHub auto-disables
+after 60 days of repository inactivity — a silent failure that would have taken
+Supabase down with it. Vercel crons have no such rule.
 
 ## Bootstrap (one-time)
 
